@@ -1,9 +1,45 @@
-from torch import nn
 import torch
 import torchvision.models as models
+from torch import nn
+
 from custom_cnn import CustomModel
 
-def make_model(arch, num_classes, pretrained):
+
+class FasterRCNNBackboneClassifier(nn.Module):
+    def __init__(self, pretrained=True, num_classes=10, freeze_backbone=True):
+        super().__init__()
+
+        # backbone
+        detection_model = models.detection.fasterrcnn_resnet50_fpn(
+            pretrained=pretrained
+        )
+        self.backbone = detection_model.backbone
+
+        self.out_channels = self.backbone.out_channels
+
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.classifier = nn.Linear(
+            in_features=self.out_channels, out_features=num_classes
+        )
+
+        if pretrained and freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+
+    def forward(self, x):
+        features = self.backbone(x)
+
+        feat = features["0"]
+        feat = self.pool(feat)
+
+        feat = feat.flatten(1)
+
+        logits = self.classifier(feat)
+
+        return logits
+
+
+def make_model(arch, num_classes, pretrained, freeze_backbone):
     # Placeholder for model creation logic
     if arch == "custom":
         model = CustomModel(num_classes)
@@ -12,8 +48,9 @@ def make_model(arch, num_classes, pretrained):
 
         # for fine tuning we freeze parameters
         # so learning from Image Net doesn't lose while traiing
-        for param in model.parameters():
-            param.requires_grad = False
+        if pretrained and freeze_backbone:
+            for param in model.parameters():
+                param.requires_grad = False
 
         model.classifier[2] = nn.Linear(model.classifier[2].in_features, num_classes)
     elif arch == "vit":
@@ -21,21 +58,14 @@ def make_model(arch, num_classes, pretrained):
 
         # for fine tuning we freeze parameters
         # so learning from Image Net doesn't lose while traiing
-        for param in model.parameters():
-            param.requires_grad = False
+        if pretrained and freeze_backbone:
+            for param in model.parameters():
+                param.requires_grad = False
 
         model.heads.head = nn.Linear(model.heads.head.in_features, num_classes)
     elif arch == "frcnn":
-        model = models.detection.fasterrcnn_resnet50_fpn(pretrained=pretrained)
-
-        # for fine tuning we freeze parameters
-        # so learning from Image Net doesn't lose while traiing
-        for param in model.parameters():
-            param.requires_grad = False
-
-        in_features = model.roi_heads.box_predictor.cls_score.in_features
-        model.roi_heads.box_predictor = models.detection.faster_rcnn.FastRCNNPredictor(
-            in_features, num_classes
+        model = FasterRCNNBackboneClassifier(
+            pretrained, num_classes, freeze_backbone=freeze_backbone
         )
     else:
         raise ValueError(f"Unknown architecture: {arch}")
