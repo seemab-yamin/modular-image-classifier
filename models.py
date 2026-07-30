@@ -2,8 +2,7 @@ import torch
 import torchvision.models as models
 from torch import nn
 
-from custom_cnn import CustomModel
-
+from custom_cnn import CustomTinyCNN
 
 class FasterRCNNBackboneClassifier(nn.Module):
     def __init__(self, pretrained=True, num_classes=10, freeze_backbone=True):
@@ -42,7 +41,7 @@ class FasterRCNNBackboneClassifier(nn.Module):
 def make_model(arch, num_classes, pretrained, freeze_backbone):
     # Placeholder for model creation logic
     if arch == "custom":
-        model = CustomModel(num_classes)
+        model = CustomTinyCNN(num_classes)
     elif arch == "convnext":
         model = models.convnext_base(pretrained=pretrained)
 
