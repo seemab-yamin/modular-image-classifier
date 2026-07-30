@@ -2,7 +2,7 @@ import torch
 import torchvision.models as models
 from torch import nn
 
-from custom_cnn import CustomTinyCNN
+from cnn_architectures import CustomTinyCNN
 
 class FasterRCNNBackboneClassifier(nn.Module):
     def __init__(self, pretrained=True, num_classes=10, freeze_backbone=True):
