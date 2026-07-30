@@ -157,17 +157,24 @@ def make_dataloaders(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, help="Name of the dataset")
+    parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
+    parser.add_argument("--num-workers", type=int, default=4, help="Number of workers")
+    parser.add_argument("--augment", action="store_true", help="Enable augmentation")
     parser.add_argument(
-        "--batch-size", type=int, default=32, help="Batch size for dataloaders"
+        "--root-dir", type=str, default="./data", help="Root directory for the dataset"
     )
-    parser.add_argument(
-        "--num-workers", type=int, default=4, help="Number of DataLoader workers"
-    )
-
     args = parser.parse_args()
 
     train_loader, val_loader, info = make_dataloaders(
         dataset_name=args.dataset,
         batch_size=args.batch_size,
-        num_workers=args.num_workers,  # Add this
+        num_workers=args.num_workers,
+        augment=args.augment,
+        root_dir=args.root_dir,
     )
+
+    print(f"Dataset: {args.dataset}")
+    print(f"Classes: {info.num_classes}")
+    print(f"Input shape: {info.input_shape}")
+    print(f"Train batches: {len(train_loader)}")
+    print(f"Val batches: {len(val_loader)}")
