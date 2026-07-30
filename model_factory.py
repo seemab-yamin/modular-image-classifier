@@ -4,6 +4,7 @@ from torch import nn
 
 from cnn_architectures import CustomTinyCNN
 
+
 class FasterRCNNBackboneClassifier(nn.Module):
     def __init__(self, pretrained=True, num_classes=10, freeze_backbone=True):
         super().__init__()
