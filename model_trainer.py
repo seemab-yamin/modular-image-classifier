@@ -12,6 +12,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--arch", type=str, default="custom", help="Model architecture")
     parser.add_argument(
+        "--epochs", type=int, default=10, help="Number of epochs to train"
+    )
+    parser.add_argument(
         "--dataset", type=str, default="cifar10", help="Name of the dataset"
     )
     parser.add_argument(
@@ -75,7 +78,7 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
 
-    for epoch in range(10):
+    for epoch in range(args.epochs):
         # ============================================
         # TRAINING PHASE - Timed
         # ============================================
@@ -83,49 +86,32 @@ if __name__ == "__main__":
 
         epoch_start = time.time()
         batch_times = []
-        forward_times = []
-        backward_times = []
 
         for batch_idx, (images, labels) in enumerate(train_loader):
             batch_start = time.time()
 
             # 1. Data transfer to GPU
-            transfer_start = time.time()
             images = images.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
-            transfer_time = time.time() - transfer_start
 
             # 2. Forward pass
-            forward_start = time.time()
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
-            forward_time = time.time() - forward_start
 
             # 3. Backward pass
-            backward_start = time.time()
             loss.backward()
             optimizer.step()
-            backward_time = time.time() - backward_start
 
             batch_time = time.time() - batch_start
             batch_times.append(batch_time)
-            forward_times.append(forward_time)
-            backward_times.append(backward_time)
 
             # Print every 10 batches
             if batch_idx % 10 == 0:
-                print(
-                    f"  Batch {batch_idx}: total={batch_time * 1000:.1f}ms, "
-                    f"transfer={transfer_time * 1000:.1f}ms, "
-                    f"forward={forward_time * 1000:.1f}ms, "
-                    f"backward={backward_time * 1000:.1f}ms"
-                )
+                print(f"  Batch {batch_idx}: total={batch_time * 1000:.1f}ms, ")
 
         epoch_time = time.time() - epoch_start
         avg_batch = sum(batch_times) / len(batch_times)
-        avg_forward = sum(forward_times) / len(forward_times)
-        avg_backward = sum(backward_times) / len(backward_times)
 
         # ============================================
         # VALIDATION PHASE - Timed
@@ -152,11 +138,6 @@ if __name__ == "__main__":
         print(f"\n{'=' * 60}")
         print(f"Epoch {epoch + 1}:")
         print(f"  Train time: {epoch_time:.2f}s ({avg_batch * 1000:.1f}ms/batch)")
-        print(f"    - Forward: {avg_forward * 1000:.1f}ms/batch")
-        print(f"    - Backward: {avg_backward * 1000:.1f}ms/batch")
-        print(
-            f"    - Transfer: {(avg_batch - avg_forward - avg_backward) * 1000:.1f}ms/batch"
-        )
         print(f"  Val time: {val_time:.2f}s")
         print(f"  Val Acc: {val_acc:.2f}%")
 
