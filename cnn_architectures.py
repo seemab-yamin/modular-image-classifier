@@ -5,14 +5,18 @@ import torch.nn as nn
 class CustomTinyCNN(nn.Module):
     """A simple CNN model for image classification."""
 
-    def __init__(self, num_classes: int = 10, max_pool_kernel_size: int = 2):
+    def __init__(
+        self, in_channels: int, num_classes: int = 10, max_pool_kernel_size: int = 2
+    ):
         super().__init__()
 
         self.pool = nn.MaxPool2d(kernel_size=max_pool_kernel_size)
 
         # Define your model architecture here
         self.block1 = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=16, kernel_size=(3, 3), padding=1),
+            nn.Conv2d(
+                in_channels=in_channels, out_channels=16, kernel_size=(3, 3), padding=1
+            ),
             nn.BatchNorm2d(16),
             nn.ReLU(),
             self.pool,
