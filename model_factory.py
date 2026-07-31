@@ -11,7 +11,7 @@ class FasterRCNNBackboneClassifier(nn.Module):
 
         # backbone
         detection_model = models.detection.fasterrcnn_resnet50_fpn(
-            pretrained=pretrained
+            weights="DEFAULT" if pretrained else None
         )
         self.backbone = detection_model.backbone
 
@@ -44,7 +44,7 @@ def make_model(arch, in_channels, num_classes, pretrained, freeze_backbone):
     if arch == "custom":
         model = CustomTinyCNN(in_channels, num_classes)
     elif arch == "convnext":
-        model = models.convnext_base(pretrained=pretrained)
+        model = models.convnext_base(weights="DEFAULT" if pretrained else None)
 
         # for fine tuning we freeze parameters
         # so learning from Image Net doesn't lose while training
@@ -54,7 +54,7 @@ def make_model(arch, in_channels, num_classes, pretrained, freeze_backbone):
 
         model.classifier[2] = nn.Linear(model.classifier[2].in_features, num_classes)
     elif arch == "vit":
-        model = models.vit_b_16(pretrained=pretrained)
+        model = models.vit_b_16(weights="DEFAULT" if pretrained else None)
 
         # for fine tuning we freeze parameters
         # so learning from Image Net doesn't lose while training

@@ -118,6 +118,8 @@ def make_dataloaders(
     num_workers: int = 4,
     root_dir: str = "./data",
     augment: bool = True,
+    model_arch: str = "",
+    resize_size: tuple = (224, 224),
 ):
     """
     dataset factory to load datasets
@@ -129,12 +131,13 @@ def make_dataloaders(
         raise ValueError(f"Unsupported dataset: {dataset_name}")
 
     dataset_config = DATASET_CONFIGS[dataset_name]
-
     input_shape = dataset_config["input_shape"]
     mean, std = dataset_config["mean"], dataset_config["std"]
 
     # build transforms
     train_transforms = [transforms.ToTensor()]
+    if model_arch == "vit":
+        train_transforms = [transforms.Resize(resize_size)] + train_transforms
     if augment:
         train_transforms = [transforms.RandomHorizontalFlip()] + train_transforms
 
@@ -146,6 +149,8 @@ def make_dataloaders(
     )
 
     val_transforms = [transforms.ToTensor()]
+    if model_arch == "vit":
+        val_transforms = [transforms.Resize(resize_size)] + val_transforms
     val_transform = transforms.Compose(
         [
             *val_transforms,
