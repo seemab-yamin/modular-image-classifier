@@ -47,7 +47,7 @@ def make_model(arch, num_classes, pretrained, freeze_backbone):
         model = models.convnext_base(pretrained=pretrained)
 
         # for fine tuning we freeze parameters
-        # so learning from Image Net doesn't lose while traiing
+        # so learning from Image Net doesn't lose while training
         if pretrained and freeze_backbone:
             for param in model.parameters():
                 param.requires_grad = False
@@ -57,7 +57,7 @@ def make_model(arch, num_classes, pretrained, freeze_backbone):
         model = models.vit_b_16(pretrained=pretrained)
 
         # for fine tuning we freeze parameters
-        # so learning from Image Net doesn't lose while traiing
+        # so learning from Image Net doesn't lose while training
         if pretrained and freeze_backbone:
             for param in model.parameters():
                 param.requires_grad = False
