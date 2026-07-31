@@ -1,5 +1,6 @@
 import argparse
 
+import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
@@ -142,18 +143,25 @@ def make_dataloaders(
         root=root_dir, download=True, transform=val_transform, **dataset_kwargs
     )
 
-    # Handle STL10 split naming
-    if dataset_name == "stl10":
-        val_dataset = dataset_class(
-            root=root_dir, split="test", download=True, transform=val_transform
-        )
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    dataloader_kwargs = {}
+    if num_workers > 0 and device == "cuda":
+        dataloader_kwargs["pin_memory"] = True
 
     # Build dataloaders
     train_loader = DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        **dataloader_kwargs,
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        **dataloader_kwargs,
     )
 
     info = DatasetInfo(num_classes, input_shape, mean, std, class_names)
