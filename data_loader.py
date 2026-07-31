@@ -113,7 +113,7 @@ class DatasetInfo:
 
 
 def make_dataloaders(
-    dataset_name: str,
+    dataset_name: str = "cifar10",
     batch_size: int = 32,
     num_workers: int = 4,
     root_dir: str = "./data",
