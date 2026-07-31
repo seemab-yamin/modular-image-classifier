@@ -11,20 +11,31 @@ from model_factory import make_model
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--arch", type=str, help="Model architecture")
-    parser.add_argument("--dataset", type=str, help="Name of the dataset")
-    parser.add_argument("--batch-size", type=int, help="Batch size for dataloaders")
     parser.add_argument(
-        "--learning-rate", type=float, help="Learning rate for the optimizer"
+        "--dataset", type=str, default="cifar10", help="Name of the dataset"
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=32, help="Batch size for dataloaders"
+    )
+    parser.add_argument(
+        "--learning-rate",
+        type=float,
+        default=0.001,
+        help="Learning rate for the optimizer",
     )
     parser.add_argument(
         "--num-workers", type=int, default=4, help="Number of workers for dataloaders"
     )
     parser.add_argument(
-        "--pretrained", action="store_true", help="Use pretrained weights"
+        "--pretrained",
+        action="store_true",
+        default=False,
+        help="Use pretrained weights",
     )
     parser.add_argument(
         "--freeze-backbone",
         action="store_true",
+        default=False,
         help="Freeze the backbone of the model",
     )
     parser.add_argument(
