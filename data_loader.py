@@ -127,12 +127,19 @@ def make_dataloaders(
     }
 
     dataset_class, num_classes, class_names = dataset_map[dataset_name]
+
+    dataset_kwargs = {}
+    if dataset_name == "stl10":
+        dataset_kwargs["split"] = "train"
+    else:
+        dataset_kwargs["train"] = True
+
     # Build datasets
     train_dataset = dataset_class(
-        root=root_dir, train=True, download=True, transform=train_transform
+        root=root_dir, download=True, transform=train_transform, **dataset_kwargs
     )
     val_dataset = dataset_class(
-        root=root_dir, train=False, download=True, transform=val_transform
+        root=root_dir, download=True, transform=val_transform, **dataset_kwargs
     )
 
     # Handle STL10 split naming
