@@ -51,6 +51,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         root_dir=args.root_dir,
+        model_arch=args.arch,
     )
     print(f"Created dataloaders with {info.num_classes} classes")
     print(f"Batch shape: {next(iter(train_loader))[0].shape}")
