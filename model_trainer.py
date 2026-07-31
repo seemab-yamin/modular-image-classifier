@@ -10,7 +10,7 @@ from model_factory import make_model
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--arch", type=str, help="Model architecture")
+    parser.add_argument("--arch", type=str, default="custom", help="Model architecture")
     parser.add_argument(
         "--dataset", type=str, default="cifar10", help="Name of the dataset"
     )
