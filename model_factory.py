@@ -39,10 +39,10 @@ class FasterRCNNBackboneClassifier(nn.Module):
         return logits
 
 
-def make_model(arch, num_classes, pretrained, freeze_backbone):
+def make_model(arch, in_channels, num_classes, pretrained, freeze_backbone):
     # Placeholder for model creation logic
     if arch == "custom":
-        model = CustomTinyCNN(num_classes)
+        model = CustomTinyCNN(in_channels, num_classes)
     elif arch == "convnext":
         model = models.convnext_base(pretrained=pretrained)
 
