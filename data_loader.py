@@ -16,7 +16,6 @@ CIFAR10_CLASSES = [
     "ship",
     "truck",
 ]
-
 CIFAR100_CLASSES = [
     "apple",
     "aquarium_fish",
@@ -67,6 +66,40 @@ STL10_CLASSES = [
     "truck",
 ]
 
+# Dataset-specific configurations
+DATASET_CONFIGS = {
+    "cifar10": {
+        "class": datasets.CIFAR10,
+        "num_classes": 10,
+        "class_names": CIFAR10_CLASSES,
+        "input_shape": (3, 32, 32),
+        "mean": (0.4914, 0.4822, 0.4465),
+        "std": (0.2023, 0.1994, 0.2010),
+        "train_kwargs": {"train": True},
+        "test_kwargs": {"train": False},
+    },
+    "cifar100": {
+        "class": datasets.CIFAR100,
+        "num_classes": 100,
+        "class_names": CIFAR100_CLASSES,
+        "input_shape": (3, 32, 32),
+        "mean": (0.5071, 0.4867, 0.4408),
+        "std": (0.2675, 0.2565, 0.2761),
+        "train_kwargs": {"train": True},
+        "test_kwargs": {"train": False},
+    },
+    "stl10": {
+        "class": datasets.STL10,
+        "num_classes": 10,
+        "class_names": STL10_CLASSES,
+        "input_shape": (3, 96, 96),
+        "mean": (0.4467, 0.4398, 0.4066),
+        "std": (0.2603, 0.2566, 0.2713),
+        "train_kwargs": {"split": "train"},
+        "test_kwargs": {"split": "test"},
+    },
+}
+
 
 class DatasetInfo:
     """Container for dataset metadata."""
@@ -81,8 +114,8 @@ class DatasetInfo:
 
 def make_dataloaders(
     dataset_name: str,
-    batch_size: int,
-    num_workers: int,
+    batch_size: int = 32,
+    num_workers: int = 4,
     root_dir: str = "./data",
     augment: bool = True,
 ):
@@ -91,20 +124,20 @@ def make_dataloaders(
     """
     dataset_name = dataset_name.lower()
 
-    # Set dataset-specific parameters
-    if dataset_name in ["cifar10", "cifar100"]:
-        input_shape = (3, 32, 32)
-        mean, std = (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
-    elif dataset_name == "stl10":
-        input_shape = (3, 96, 96)
-        mean, std = (0.4467, 0.4398, 0.4066), (0.2603, 0.2566, 0.2713)
-    else:
+    # Get dataset config
+    if dataset_name not in DATASET_CONFIGS:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
 
+    dataset_config = DATASET_CONFIGS[dataset_name]
+
+    input_shape = dataset_config["input_shape"]
+    mean, std = dataset_config["mean"], dataset_config["std"]
+
     # build transforms
-    train_transforms = [transforms.Resize(input_shape[1:]), transforms.ToTensor()]
+    train_transforms = [transforms.ToTensor()]
     if augment:
-        train_transforms.insert(1, transforms.RandomHorizontalFlip())
+        train_transforms = [transforms.RandomHorizontalFlip()] + train_transforms
+
     train_transform = transforms.Compose(
         [
             *train_transforms,
@@ -112,7 +145,7 @@ def make_dataloaders(
         ]
     )
 
-    val_transforms = [transforms.Resize(input_shape[1:]), transforms.ToTensor()]
+    val_transforms = [transforms.ToTensor()]
     val_transform = transforms.Compose(
         [
             *val_transforms,
@@ -120,51 +153,64 @@ def make_dataloaders(
         ]
     )
 
-    # Dataset mapping
-    dataset_map = {
-        "cifar10": (datasets.CIFAR10, 10, CIFAR10_CLASSES),
-        "cifar100": (datasets.CIFAR100, 100, CIFAR100_CLASSES),
-        "stl10": (datasets.STL10, 10, STL10_CLASSES),
-    }
+    dataset_class = dataset_config["class"]
 
-    dataset_class, num_classes, class_names = dataset_map[dataset_name]
-
-    dataset_kwargs = {}
+    train_dataset_kwargs = {}
+    test_dataset_kwargs = {}
     if dataset_name == "stl10":
-        dataset_kwargs["split"] = "train"
+        train_dataset_kwargs["split"] = "train"
+        test_dataset_kwargs["split"] = "test"
     else:
-        dataset_kwargs["train"] = True
+        train_dataset_kwargs["train"] = True
+        test_dataset_kwargs["train"] = False
 
     # Build datasets
     train_dataset = dataset_class(
-        root=root_dir, download=True, transform=train_transform, **dataset_kwargs
+        root=root_dir,
+        download=True,
+        transform=train_transform,
+        **dataset_config["train_kwargs"],
     )
     val_dataset = dataset_class(
-        root=root_dir, download=True, transform=val_transform, **dataset_kwargs
+        root=root_dir,
+        download=True,
+        transform=val_transform,
+        **dataset_config["test_kwargs"],
     )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    dataloader_kwargs = {}
-    if num_workers > 0 and device == "cuda":
-        dataloader_kwargs["pin_memory"] = True
+    dataloader_kwargs = {
+        "batch_size": batch_size,
+        "num_workers": num_workers,
+        "pin_memory": (num_workers > 0)
+        and (device == "cuda"),  # default, will be set to True if device is CUDA
+        "drop_last": True,  # drop last incomplete batch
+    }
 
     # Build dataloaders
     train_loader = DataLoader(
         train_dataset,
-        batch_size=batch_size,
         shuffle=True,
-        num_workers=num_workers,
         **dataloader_kwargs,
     )
     val_loader = DataLoader(
         val_dataset,
-        batch_size=batch_size,
         shuffle=False,
-        num_workers=num_workers,
         **dataloader_kwargs,
     )
+    if device == "cuda":
+        print(
+            f"Using CUDA with {num_workers} workers and pin_memory={dataloader_kwargs.get('pin_memory', False)}"
+        )
 
-    info = DatasetInfo(num_classes, input_shape, mean, std, class_names)
+    # Create info object
+    info = DatasetInfo(
+        num_classes=dataset_config["num_classes"],
+        input_shape=input_shape,
+        mean=mean,
+        std=std,
+        class_names=dataset_config["class_names"],
+    )
 
     return train_loader, val_loader, info
 
