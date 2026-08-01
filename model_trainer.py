@@ -1,31 +1,31 @@
 from utils import parse_args_with_defaults, set_seed
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
 
-if __name__ == "__main__":
-    # Parse args with YAML defaults
+# ============================================================
+# BLOCK 1: CONFIGURATION & SETUP
+# ============================================================
+def setup():
+    """Parse arguments and set seed."""
     args = parse_args_with_defaults()
-
-    # Access arguments
-    print(f"Architecture: {args.arch}")
-    print(f"Seed: {args.seed}")
-    print(f"Epochs: {args.epochs}")
-    print(f"Dataset: {args.dataset}")
-    print(f"Batch size: {args.batch_size}")
-    print(f"Learning rate: {args.learning_rate}")
-    print(f"Pretrained: {args.pre_trained}")
-    print(f"Freeze backbone: {args.freeze_backbone}")
-    print(f"Data dir: {args.data_dir}")
-    print(f"Reports dir: {args.reports_dir}")
-
     set_seed(args.seed)
 
-    import time
+    # Create results directories
+    os.makedirs(args.reports_dir, exist_ok=True)
+    os.makedirs(os.path.join(args.reports_dir, "confusion_matrices"), exist_ok=True)
+    os.makedirs(os.path.join(args.reports_dir, "metrics"), exist_ok=True)
 
-    import torch
-    import torch.nn as nn
-    from torch.optim import Adam
+    return args
 
+
+# ============================================================
+# BLOCK 2: DATA LOADING
+# ============================================================
+def load_data(args):
+    """Create dataloaders and get dataset info."""
     from data_loader import make_dataloaders
-    from model_factory import make_model
 
     train_loader, val_loader, info = make_dataloaders(
         dataset_name=args.dataset,
@@ -35,20 +35,34 @@ if __name__ == "__main__":
         data_dir=args.data_dir,
         resize_size=(224, 224) if args.arch == "vit" else None,
     )
+
     print(f"Created dataloaders with {info.num_classes} classes")
     print(f"Batch shape: {next(iter(train_loader))[0].shape}")
+
+    return train_loader, val_loader, info
+
+
+# ============================================================
+# BLOCK 3: MODEL CREATION
+# ============================================================
+def create_model(args, num_classes):
+    """Create model and optimizer."""
+    import torch.nn as nn
+    from torch.optim import Adam
+    from model_factory import make_model
 
     model = make_model(
         arch=args.arch,
         in_channels=3,
-        num_classes=info.num_classes,
+        num_classes=num_classes,
         pretrained=args.pre_trained,
         freeze_backbone=args.freeze_backbone,
     )
-    print(f"Selected model:\n{args.arch} with pretrained={args.pre_trained}")
-    model_summary = str(model)
-    print(f"Created model:\n{model_summary}")
 
+    print(f"Selected model: {args.arch} with pretrained={args.pre_trained}")
+    print(f"Created model:\n{str(model)}")
+
+    # Select trainable parameters
     if args.pre_trained and args.freeze_backbone:
         update_params = [p for p in model.parameters() if p.requires_grad]
     else:
@@ -57,76 +71,303 @@ if __name__ == "__main__":
     optimizer = Adam(params=update_params, lr=args.learning_rate)
     criterion = nn.CrossEntropyLoss()
 
-    # training loop block
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Using device: {device}")
+    return model, optimizer, criterion
 
-    for epoch in range(args.epochs):
-        # ============================================
-        # TRAINING PHASE - Timed
-        # ============================================
-        model.train()
 
-        epoch_start = time.time()
-        batch_times = []
+# ============================================================
+# BLOCK 4: TRAINING LOOP
+# ============================================================
+def train_epoch(model, train_loader, optimizer, criterion, device, epoch):
+    """Train one epoch and return metrics."""
+    import time
 
-        for batch_idx, (images, labels) in enumerate(train_loader):
-            batch_start = time.time()
+    model.train()
+    epoch_start = time.time()
+    batch_times = []
 
-            # 1. Data transfer to GPU
+    for batch_idx, (images, labels) in enumerate(train_loader):
+        batch_start = time.time()
+
+        images = images.to(device, non_blocking=True)
+        labels = labels.to(device, non_blocking=True)
+
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        batch_time = time.time() - batch_start
+        batch_times.append(batch_time)
+
+        if batch_idx % 10 == 0:
+            print(f"  Batch {batch_idx}: total={batch_time * 1000:.1f}ms")
+
+    epoch_time = time.time() - epoch_start
+    avg_batch = sum(batch_times) / len(batch_times)
+
+    return epoch_time, avg_batch
+
+
+# ============================================================
+# BLOCK 5: VALIDATION LOOP
+# ============================================================
+def validate(model, val_loader, device):
+    """Validate model and return accuracy."""
+    import time
+    import torch
+
+    model.eval()
+    val_start = time.time()
+
+    all_preds = []
+    all_labels = []
+
+    with torch.no_grad():
+        for images, labels in val_loader:
             images = images.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
-
-            # 2. Forward pass
-            optimizer.zero_grad()
             outputs = model(images)
-            loss = criterion(outputs, labels)
+            _, predicted = outputs.max(1)
+            all_preds.extend(predicted.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
 
-            # 3. Backward pass
-            loss.backward()
-            optimizer.step()
+    val_time = time.time() - val_start
+    val_acc = (
+        100
+        * sum(1 for pred, label in zip(all_preds, all_labels) if pred == label)
+        / len(all_labels)
+    )
 
-            batch_time = time.time() - batch_start
-            batch_times.append(batch_time)
+    return all_preds, all_labels, val_time, val_acc
 
-            # Print every 10 batches
-            if batch_idx % 10 == 0:
-                print(f"  Batch {batch_idx}: total={batch_time * 1000:.1f}ms, ")
 
-        epoch_time = time.time() - epoch_start
-        avg_batch = sum(batch_times) / len(batch_times)
+# ============================================================
+# BLOCK 6: METRICS & CONFUSION MATRIX
+# ============================================================
+def get_confusion_metrics(all_labels, all_preds, info):
+    """Compute classification metrics and confusion matrix."""
+    from sklearn.metrics import (
+        classification_report,
+        confusion_matrix,
+        precision_recall_fscore_support,
+    )
 
-        # ============================================
-        # VALIDATION PHASE - Timed
-        # ============================================
-        model.eval()
-        correct, total = 0, 0
-        val_start = time.time()
+    # 1. Per-class + global metrics
+    report = classification_report(
+        all_labels,
+        all_preds,
+        target_names=info.class_names,
+        output_dict=True,
+    )
 
-        with torch.no_grad():
-            for images, labels in val_loader:
-                images = images.to(device, non_blocking=True)
-                labels = labels.to(device, non_blocking=True)
-                outputs = model(images)
-                _, predicted = outputs.max(1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
+    macro_f1 = report["macro avg"]["f1-score"]
+    weighted_acc = report["weighted avg"]["precision"]
 
-        val_time = time.time() - val_start
-        val_acc = 100 * correct / total
+    # 2. Confusion matrix
+    cm = confusion_matrix(all_labels, all_preds)
 
-        # ============================================
-        # REPORT
-        # ============================================
-        print(f"\n{'=' * 60}")
-        print(f"Epoch {epoch + 1}:")
-        print(f"  Train time: {epoch_time:.2f}s ({avg_batch * 1000:.1f}ms/batch)")
-        print(f"  Val time: {val_time:.2f}s")
-        print(f"  Val Acc: {val_acc:.2f}%")
+    # 3. Per-class metrics
+    precision, recall, f1, support = precision_recall_fscore_support(
+        all_labels,
+        all_preds,
+        average=None,
+    )
 
-        # GPU memory usage
-        if device == "cuda":
-            print(
-                f"  GPU Memory: {torch.cuda.memory_allocated() / 1e9:.2f}GB / {torch.cuda.max_memory_allocated() / 1e9:.2f}GB"
-            )
-        print(f"{'=' * 60}\n")
+    return macro_f1, weighted_acc, report, cm, precision, recall, f1, support
+
+
+def save_confusion_matrix(cm, class_names, save_path, title="Confusion Matrix"):
+    """Plot and save confusion matrix."""
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        xticklabels=class_names,
+        yticklabels=class_names,
+        square=True,
+    )
+    plt.title(title)
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    print(f"✅ Confusion matrix saved: {save_path}")
+
+
+def save_metrics_report(
+    report, metrics_file, cm, precision, recall, f1, support, class_names
+):
+    """Save metrics to JSON file."""
+    import json
+
+    metrics_data = {
+        "classification_report": report,
+        "confusion_matrix": cm.tolist(),
+        "per_class_metrics": {
+            class_names[i]: {
+                "precision": float(precision[i]),
+                "recall": float(recall[i]),
+                "f1_score": float(f1[i]),
+                "support": int(support[i]),
+            }
+            for i in range(len(class_names))
+        },
+        "macro_f1": float(report["macro avg"]["f1-score"]),
+        "weighted_accuracy": float(report["weighted avg"]["precision"]),
+    }
+
+    with open(metrics_file, "w") as f:
+        json.dump(metrics_data, f, indent=2)
+
+    print(f"✅ Metrics saved: {metrics_file}")
+
+
+# ============================================================
+# BLOCK 7: REPORTING
+# ============================================================
+def print_epoch_report(epoch, epoch_time, avg_batch, val_time, val_acc, device):
+    """Print epoch summary."""
+    import torch
+
+    print(f"\n{'=' * 60}")
+    print(f"Epoch {epoch + 1}:")
+    print(f"  Train time: {epoch_time:.2f}s ({avg_batch * 1000:.1f}ms/batch)")
+    print(f"  Val time: {val_time:.2f}s")
+    print(f"  Val Acc: {val_acc:.2f}%")
+
+    if device == "cuda":
+        print(
+            f"  GPU Memory: {torch.cuda.memory_allocated() / 1e9:.2f}GB / "
+            f"{torch.cuda.max_memory_allocated() / 1e9:.2f}GB"
+        )
+    print(f"{'=' * 60}\n")
+
+
+def print_final_metrics(report, cm, class_names, model_arch, dataset):
+    """Print final evaluation summary."""
+    print("\n" + "=" * 60)
+    print("FINAL EVALUATION METRICS")
+    print("=" * 60)
+
+    print(f"\nModel: {model_arch}")
+    print(f"Dataset: {dataset}")
+    print(f"\nMacro F1: {report['macro avg']['f1-score']:.4f}")
+    print(f"Weighted Accuracy: {report['weighted avg']['precision']:.4f}")
+
+    print("\nPer-class metrics:")
+    print(f"{'Class':<15} {'Precision':<12} {'Recall':<12} {'F1':<12} {'Support':<10}")
+    print("-" * 60)
+    for i, name in enumerate(class_names):
+        print(
+            f"{name:<15} {report[name]['precision']:<12.4f} "
+            f"{report[name]['recall']:<12.4f} {report[name]['f1-score']:<12.4f} "
+            f"{int(report[name]['support']):<10}"
+        )
+    print("=" * 60 + "\n")
+
+
+# ============================================================
+# BLOCK 8: MAIN
+# ============================================================
+def main():
+    import torch
+
+    # Setup
+    args = setup()
+
+    # Print config
+    print("\n" + "=" * 60)
+    print("CONFIGURATION")
+    print("=" * 60)
+    for key, value in vars(args).items():
+        print(f"  {key}: {value}")
+    print("=" * 60 + "\n")
+
+    # Load data
+    train_loader, val_loader, info = load_data(args)
+
+    # Create model
+    model, optimizer, criterion = create_model(args, info.num_classes)
+
+    # Device
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = model.to(device)
+    print(f"Using device: {device}\n")
+
+    # Training loop
+    for epoch in range(args.epochs):
+        # Train
+        epoch_time, avg_batch = train_epoch(
+            model, train_loader, optimizer, criterion, device, epoch
+        )
+
+        # Validate
+        all_preds, all_labels, val_time, val_acc = validate(model, val_loader, device)
+
+        # Compute metrics
+        macro_f1, weighted_acc, report, cm, precision, recall, f1, support = (
+            get_confusion_metrics(all_labels, all_preds, info)
+        )
+
+        # Report
+        print_epoch_report(epoch, epoch_time, avg_batch, val_time, val_acc, device)
+
+    # ============================================================
+    # FINAL EVALUATION & SAVE ARTIFACTS
+    # ============================================================
+
+    # 1. Print final metrics
+    print_final_metrics(report, cm, info.class_names, args.arch, args.dataset)
+
+    # 2. Save confusion matrix
+    cm_filename = (
+        f"{args.reports_dir}/confusion_matrices/cm_{args.arch}_{args.dataset}.png"
+    )
+    save_confusion_matrix(
+        cm,
+        info.class_names,
+        cm_filename,
+        title=f"Confusion Matrix - {args.arch} on {args.dataset}",
+    )
+
+    # 3. Save metrics report
+    metrics_filename = (
+        f"{args.reports_dir}/metrics/metrics_{args.arch}_{args.dataset}.json"
+    )
+    save_metrics_report(
+        report, metrics_filename, cm, precision, recall, f1, support, info.class_names
+    )
+
+    # 4. Save model checkpoint
+    checkpoint_dir = os.path.join(args.reports_dir, "checkpoints")
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    checkpoint_path = os.path.join(
+        checkpoint_dir, f"{args.arch}_{args.dataset}_best.pth"
+    )
+    torch.save(
+        {
+            "epoch": args.epochs,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "val_acc": val_acc,
+            "args": vars(args),
+        },
+        checkpoint_path,
+    )
+    print(f"✅ Checkpoint saved: {checkpoint_path}")
+
+    print("\n" + "=" * 60)
+    print("TRAINING COMPLETE")
+    print("=" * 60)
+    print(f"Best Validation Accuracy: {val_acc:.2f}%")
+    print(f"Macro F1: {macro_f1:.4f}")
+    print(f"All artifacts saved to: {args.reports_dir}")
+    print("=" * 60 + "\n")
+
+
+if __name__ == "__main__":
+    main()
