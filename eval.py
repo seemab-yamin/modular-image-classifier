@@ -1,5 +1,5 @@
 """
-Evaluation Utilities - Metrics, Confusion Matrix, Reports
+Evaluation Utilities - Metrics, Confusion Matrix
 """
 
 import matplotlib.pyplot as plt

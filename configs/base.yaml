@@ -9,4 +9,4 @@ num_workers: 2
 pre_trained: false
 freeze_backbone: false
 data_dir: "./data"
-reports_dir: "./reports"
+artifacts_dir: "./artifacts"

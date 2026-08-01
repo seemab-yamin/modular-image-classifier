@@ -106,10 +106,10 @@ def parse_args_with_defaults():
         help="Data directory for the dataset",
     )
     parser.add_argument(
-        "--reports-dir",
+        "--artifacts-dir",
         type=str,
-        default=defaults.get("reports_dir", "./reports"),
-        help="Directory for storing reports",
+        default=defaults.get("artifacts_dir", "./artifacts"),
+        help="Directory for storing artifacts",
     )
 
     # Now parse all args with the fully built parser
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     print(f"Pretrained: {args.pre_trained}")
     print(f"Freeze backbone: {args.freeze_backbone}")
     print(f"Data dir: {args.data_dir}")
-    print(f"Reports dir: {args.reports_dir}")
+    print(f"Artifacts dir: {args.artifacts_dir}")
     print("=" * 50)
 
     # Set seeds

@@ -22,9 +22,9 @@ def setup():
     set_seed(args.seed)
 
     # Create results directories
-    os.makedirs(args.reports_dir, exist_ok=True)
-    os.makedirs(os.path.join(args.reports_dir, "part_1_results"), exist_ok=True)
-    os.makedirs(os.path.join(args.reports_dir, "checkpoints"), exist_ok=True)
+    os.makedirs(args.artifacts_dir, exist_ok=True)
+    os.makedirs(os.path.join(args.artifacts_dir, "part_1_results"), exist_ok=True)
+    os.makedirs(os.path.join(args.artifacts_dir, "checkpoints"), exist_ok=True)
     return args
 
 
@@ -213,7 +213,7 @@ def main():
 
     # 7. Save artifacts
     cm_path = os.path.join(
-        args.reports_dir, "part_1_results", f"cm_{args.arch}_MODEL_{args.dataset}.png"
+        args.artifacts_dir, "part_1_results", f"cm_{args.arch}_MODEL_{args.dataset}.png"
     )
     save_confusion_matrix(
         metrics["confusion_matrix"],
@@ -222,7 +222,7 @@ def main():
         title=f"Confusion Matrix - {args.arch} Model on {args.dataset}",
     )
 
-    summary_path = os.path.join(args.reports_dir, "part_1_results", "summary.txt")
+    summary_path = os.path.join(args.artifacts_dir, "part_1_results", "summary.txt")
     save_summary_report(
         metrics["report"],
         info.class_names,
@@ -233,7 +233,7 @@ def main():
 
     # 8. Save checkpoint
     checkpoint_path = os.path.join(
-        args.reports_dir, "checkpoints", f"{args.arch}_MODEL_{args.dataset}_best.pth"
+        args.artifacts_dir, "checkpoints", f"{args.arch}_MODEL_{args.dataset}_best.pth"
     )
     torch.save(
         {
@@ -252,7 +252,7 @@ def main():
     print("=" * 60)
     print(f"Best Validation Accuracy: {val_acc:.2f}%")
     print(f"Macro F1: {metrics['macro_f1']:.4f}")
-    print(f"All artifacts saved to: {args.reports_dir}")
+    print(f"All artifacts saved to: {args.artifacts_dir}")
     print("=" * 60 + "\n")
 
 
