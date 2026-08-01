@@ -33,7 +33,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         data_dir=args.data_dir,
-        model_arch=args.arch,
+        resize_size=(224, 224) if args.arch == "vit" else None,
     )
     print(f"Created dataloaders with {info.num_classes} classes")
     print(f"Batch shape: {next(iter(train_loader))[0].shape}")
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     print(f"Created model:\n{model_summary}")
 
     if args.pre_trained and args.freeze_backbone:
-        update_params = filter(lambda p: p.requires_grad, model.parameters())
+        update_params = [p for p in model.parameters() if p.requires_grad]
     else:
         update_params = model.parameters()
 

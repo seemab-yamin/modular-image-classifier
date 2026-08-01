@@ -121,8 +121,7 @@ def make_dataloaders(
     num_workers: int = 4,
     data_dir: str = "./data",
     augment: bool = True,
-    model_arch: str = "",
-    resize_size: tuple = (224, 224),
+    resize_size: tuple = (),
 ):
     """
     dataset factory to load datasets
@@ -139,7 +138,7 @@ def make_dataloaders(
 
     # build transforms
     train_transforms = [transforms.ToTensor()]
-    if model_arch == "vit":
+    if resize_size:
         train_transforms = [transforms.Resize(resize_size)] + train_transforms
     if augment:
         train_transforms = [transforms.RandomHorizontalFlip()] + train_transforms
@@ -152,7 +151,7 @@ def make_dataloaders(
     )
 
     val_transforms = [transforms.ToTensor()]
-    if model_arch == "vit":
+    if resize_size:
         val_transforms = [transforms.Resize(resize_size)] + val_transforms
     val_transform = transforms.Compose(
         [
