@@ -1,24 +1,41 @@
+"""
+Modular Image Classifier - Training Script
+"""
+
 import os
 
-import matplotlib.pyplot as plt
-import seaborn as sns
+import torch
+from eval import evaluate, save_confusion_matrix, save_summary_report
 
+from data_loader import make_dataloaders
+from model_factory import make_model
 from utils import parse_args_with_defaults, set_seed
+
 
 # ============================================================
 # BLOCK 1: CONFIGURATION & SETUP
 # ============================================================
 def setup():
-    """Parse arguments and set seed."""
+    """Parse arguments, set seed, and create directories."""
+
     args = parse_args_with_defaults()
     set_seed(args.seed)
 
     # Create results directories
     os.makedirs(args.reports_dir, exist_ok=True)
     os.makedirs(os.path.join(args.reports_dir, "part_1_results"), exist_ok=True)
-    os.makedirs(os.path.join(args.reports_dir, "metrics"), exist_ok=True)
-
+    os.makedirs(os.path.join(args.reports_dir, "checkpoints"), exist_ok=True)
     return args
+
+
+def print_config(args):
+    """Print configuration."""
+    print("\n" + "=" * 60)
+    print("CONFIGURATION")
+    print("=" * 60)
+    for key, value in vars(args).items():
+        print(f"  {key}: {value}")
+    print("=" * 60 + "\n")
 
 
 # ============================================================
@@ -26,7 +43,6 @@ def setup():
 # ============================================================
 def load_data(args):
     """Create dataloaders and get dataset info."""
-    from data_loader import make_dataloaders
 
     train_loader, val_loader, info = make_dataloaders(
         dataset_name=args.dataset,
@@ -47,11 +63,10 @@ def load_data(args):
 # BLOCK 3: MODEL CREATION
 # ============================================================
 def create_model(args, num_classes):
-    """Create model and optimizer."""
+    """Create model, optimizer, and criterion."""
+
     import torch.nn as nn
     from torch.optim import Adam
-
-    from model_factory import make_model
 
     model = make_model(
         arch=args.arch,
@@ -77,7 +92,7 @@ def create_model(args, num_classes):
 
 
 # ============================================================
-# BLOCK 4: TRAINING LOOP
+# BLOCK 4: TRAINING
 # ============================================================
 def train_epoch(model, train_loader, optimizer, criterion, device, epoch):
     """Train one epoch and return metrics."""
@@ -112,13 +127,12 @@ def train_epoch(model, train_loader, optimizer, criterion, device, epoch):
 
 
 # ============================================================
-# BLOCK 5: VALIDATION LOOP
+# BLOCK 5: VALIDATION
 # ============================================================
 def validate(model, val_loader, device):
-    """Validate model and return accuracy."""
-    import time
+    """Validate model and return predictions and labels."""
 
-    import torch
+    import time
 
     model.eval()
     val_start = time.time()
@@ -146,67 +160,10 @@ def validate(model, val_loader, device):
 
 
 # ============================================================
-# BLOCK 6: METRICS & CONFUSION MATRIX
-# ============================================================
-def get_confusion_metrics(all_labels, all_preds, info):
-    """Compute classification metrics and confusion matrix."""
-    from sklearn.metrics import (
-        classification_report,
-        confusion_matrix,
-        precision_recall_fscore_support,
-    )
-
-    # 1. Per-class + global metrics
-    report = classification_report(
-        all_labels,
-        all_preds,
-        target_names=info.class_names,
-        output_dict=True,
-    )
-
-    macro_f1 = report["macro avg"]["f1-score"]
-    weighted_acc = report["weighted avg"]["precision"]
-
-    # 2. Confusion matrix
-    cm = confusion_matrix(all_labels, all_preds)
-
-    # 3. Per-class metrics
-    precision, recall, f1, support = precision_recall_fscore_support(
-        all_labels,
-        all_preds,
-        average=None,
-    )
-
-    return macro_f1, weighted_acc, report, cm, precision, recall, f1, support
-
-
-def save_confusion_matrix(cm, class_names, save_path, title="Confusion Matrix"):
-    """Plot and save confusion matrix."""
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(
-        cm,
-        annot=True,
-        fmt="d",
-        cmap="Blues",
-        xticklabels=class_names,
-        yticklabels=class_names,
-        square=True,
-    )
-    plt.title(title)
-    plt.xlabel("Predicted")
-    plt.ylabel("True")
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches="tight")
-    plt.close()
-    print(f"✅ Confusion matrix saved: {save_path}")
-
-
-# ============================================================
-# BLOCK 7: REPORTING
+# BLOCK 6: REPORTING
 # ============================================================
 def print_epoch_report(epoch, epoch_time, avg_batch, val_time, val_acc, device):
     """Print epoch summary."""
-    import torch
 
     print(f"\n{'=' * 60}")
     print(f"Epoch {epoch + 1}:")
@@ -222,167 +179,61 @@ def print_epoch_report(epoch, epoch_time, avg_batch, val_time, val_acc, device):
     print(f"{'=' * 60}\n")
 
 
-def print_final_metrics(report, cm, class_names, model_arch, dataset):
-    """Print final evaluation summary."""
-    print("\n" + "=" * 60)
-    print("FINAL EVALUATION METRICS")
-    print("=" * 60)
-
-    print(f"\nModel: {model_arch}")
-    print(f"Dataset: {dataset}")
-    print(f"\nMacro F1: {report['macro avg']['f1-score']:.4f}")
-    print(f"Weighted Accuracy: {report['weighted avg']['precision']:.4f}")
-
-    print("\nPer-class metrics:")
-    print(f"{'Class':<15} {'Precision':<12} {'Recall':<12} {'F1':<12} {'Support':<10}")
-    print("-" * 60)
-    for i, name in enumerate(class_names):
-        print(
-            f"{name:<15} {report[name]['precision']:<12.4f} "
-            f"{report[name]['recall']:<12.4f} {report[name]['f1-score']:<12.4f} "
-            f"{int(report[name]['support']):<10}"
-        )
-    print("=" * 60 + "\n")
-
-
-def save_summary_report(report, class_names, model_arch, dataset, save_path):
-    """
-    Save summary report with class-wise and global metrics.
-    Each experiment appends a block with:
-    - Header line: Experiment: {model_arch} | Dataset: {dataset}
-    - Class-wise metrics table (pandas-style)
-    - Global aggregates table
-    - Empty line between experiments
-    """
-    import pandas as pd
-
-    # Prepare class-wise data
-    class_data = []
-    for name in class_names:
-        class_data.append(
-            {
-                "Class": name,
-                "Precision": report[name]["precision"],
-                "Recall": report[name]["recall"],
-                "F1-Score": report[name]["f1-score"],
-                "Support": int(report[name]["support"]),
-            }
-        )
-
-    class_df = pd.DataFrame(class_data)
-
-    # Prepare global aggregates
-    global_data = {
-        "Metric": ["Macro F1", "Weighted Precision", "Weighted Recall", "Weighted F1"],
-        "Score": [
-            report["macro avg"]["f1-score"],
-            report["weighted avg"]["precision"],
-            report["weighted avg"]["recall"],
-            report["weighted avg"]["f1-score"],
-        ],
-    }
-    global_df = pd.DataFrame(global_data)
-
-    # Write to file (append mode)
-    with open(save_path, "a") as f:
-        # Header
-        f.write(f"Experiment: {model_arch} | Dataset: {dataset}\n")
-        f.write("-" * 60 + "\n")
-
-        # Class-wise metrics
-        f.write("\nClass-wise Metrics:\n")
-        f.write(class_df.to_string(index=False))
-        f.write("\n\n")
-
-        # Global aggregates
-        f.write("Global Metrics:\n")
-        f.write(global_df.to_string(index=False))
-        f.write("\n")
-        f.write("=" * 60 + "\n")
-        f.write("\n")  # Empty line between experiments
-
-    print(f"✅ Summary report appended: {save_path}")
-
-
 # ============================================================
-# BLOCK 8: MAIN
+# BLOCK 7: MAIN
 # ============================================================
 def main():
     import torch
 
-    # Setup
+    # 1. Setup
     args = setup()
+    print_config(args)
 
-    # Print config
-    print("\n" + "=" * 60)
-    print("CONFIGURATION")
-    print("=" * 60)
-    for key, value in vars(args).items():
-        print(f"  {key}: {value}")
-    print("=" * 60 + "\n")
-
-    # Load data
+    # 2. Load data
     train_loader, val_loader, info = load_data(args)
 
-    # Create model
+    # 3. Create model
     model, optimizer, criterion = create_model(args, info.num_classes)
 
-    # Device
+    # 4. Device
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
     print(f"Using device: {device}\n")
 
-    # Training loop
+    # 5. Training loop
     for epoch in range(args.epochs):
-        # Train
         epoch_time, avg_batch = train_epoch(
             model, train_loader, optimizer, criterion, device, epoch
         )
-
-        # Validate
         all_preds, all_labels, val_time, val_acc = validate(model, val_loader, device)
-
-        # Compute metrics
-        macro_f1, weighted_acc, report, cm, precision, recall, f1, support = (
-            get_confusion_metrics(all_labels, all_preds, info)
-        )
-
-        # Report
         print_epoch_report(epoch, epoch_time, avg_batch, val_time, val_acc, device)
 
-    # ============================================================
-    # FINAL EVALUATION & SAVE ARTIFACTS
-    # ============================================================
+    # 6. Final evaluation
+    metrics = evaluate(all_labels, all_preds, info.class_names)
 
-    # 1. Print final metrics
-    print_final_metrics(report, cm, info.class_names, args.arch, args.dataset)
-
-    # 2. Save confusion matrix
-    cm_filename = os.path.join(
+    # 7. Save artifacts
+    cm_path = os.path.join(
         args.reports_dir, "part_1_results", f"cm_{args.arch}_{args.dataset}.png"
     )
     save_confusion_matrix(
-        cm,
+        metrics["confusion_matrix"],
         info.class_names,
-        cm_filename,
-        title=f"Confusion Matrix - {args.arch} on {args.dataset}",
+        cm_path,
+        title=f"Confusion Matrix - {args.arch} Model on {args.dataset}",
     )
 
-    # 3. Save summary report (appends to file)
-    summary_filename = os.path.join(args.reports_dir, "part_1_results", "summary.txt")
+    summary_path = os.path.join(args.reports_dir, "part_1_results", "summary.txt")
     save_summary_report(
-        report,
+        metrics["report"],
         info.class_names,
         args.arch,
         args.dataset,
-        summary_filename,
+        summary_path,
     )
 
-    # 4. Save model checkpoint
-    checkpoint_dir = os.path.join(args.reports_dir, "checkpoints")
-    os.makedirs(checkpoint_dir, exist_ok=True)
+    # 8. Save checkpoint
     checkpoint_path = os.path.join(
-        checkpoint_dir, f"{args.arch}_{args.dataset}_best.pth"
+        args.reports_dir, "checkpoints", f"{args.arch}_{args.dataset}_best.pth"
     )
     torch.save(
         {
@@ -400,7 +251,7 @@ def main():
     print("TRAINING COMPLETE")
     print("=" * 60)
     print(f"Best Validation Accuracy: {val_acc:.2f}%")
-    print(f"Macro F1: {macro_f1:.4f}")
+    print(f"Macro F1: {metrics['macro_f1']:.4f}")
     print(f"All artifacts saved to: {args.reports_dir}")
     print("=" * 60 + "\n")
 
