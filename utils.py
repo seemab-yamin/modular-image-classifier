@@ -88,9 +88,9 @@ def parse_args_with_defaults():
         help="Number of workers for dataloaders",
     )
     parser.add_argument(
-        "--pretrained",
+        "--pre-trained",
         action="store_true",
-        default=defaults.get("pretrained", False),
+        default=defaults.get("pre_trained", False),
         help="Use pretrained weights",
     )
     parser.add_argument(
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     print(f"Batch size: {args.batch_size}")
     print(f"Learning rate: {args.learning_rate}")
     print(f"Num workers: {args.num_workers}")
-    print(f"Pretrained: {args.pretrained}")
+    print(f"Pretrained: {args.pre_trained}")
     print(f"Freeze backbone: {args.freeze_backbone}")
     print(f"Data dir: {args.data_dir}")
     print(f"Reports dir: {args.reports_dir}")
