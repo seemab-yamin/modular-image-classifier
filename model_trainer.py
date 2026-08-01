@@ -11,8 +11,10 @@ if __name__ == "__main__":
     print(f"Dataset: {args.dataset}")
     print(f"Batch size: {args.batch_size}")
     print(f"Learning rate: {args.learning_rate}")
-    print(f"Pretrained: {args.pretrained}")
+    print(f"Pretrained: {args.pre_trained}")
     print(f"Freeze backbone: {args.freeze_backbone}")
+    print(f"Data dir: {args.data_dir}")
+    print(f"Reports dir: {args.reports_dir}")
 
     set_seed(args.seed)
 
