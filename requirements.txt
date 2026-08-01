@@ -1,7 +1,7 @@
-torch
-torchvision
+matplotlib
+pandas
 pyyaml
 scikit-learn
-pandas
-matplotlib
 seaborn
+torch
+torchvision
