@@ -148,7 +148,7 @@ def save_per_class_metrics(precision, recall, f1, support, class_names, save_pat
 # ============================================================
 # BLOCK 5: PRINT METRICS
 # ============================================================
-def print_metrics(metrics):
+def print_metrics(metrics, class_names):
     """Pretty print metrics."""
     print("\n" + "=" * 60)
     print("EVALUATION METRICS")
@@ -177,4 +177,4 @@ if __name__ == "__main__":
     class_names = [f"Class_{i}" for i in range(10)]
 
     metrics = evaluate(all_labels, all_preds, class_names)
-    print_metrics(metrics)
+    print_metrics(metrics, class_names)
