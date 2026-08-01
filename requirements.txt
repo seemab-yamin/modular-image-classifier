@@ -1,3 +1,7 @@
 torch
 torchvision
 pyyaml
+scikit-learn
+pandas
+matplotlib
+seaborn
