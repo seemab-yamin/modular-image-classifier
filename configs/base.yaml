@@ -8,5 +8,6 @@ learning_rate: 0.001
 num_workers: 2
 pre_trained: false
 freeze_backbone: false
+use_amp: true
 data_dir: "./data"
 artifacts_dir: "./artifacts"

@@ -100,6 +100,12 @@ def parse_args_with_defaults():
         help="Freeze the backbone of the model",
     )
     parser.add_argument(
+        "--use-amp",
+        action="store_true",
+        default=defaults.get("use_amp", False),
+        help="Use automatic mixed precision (AMP) for training",
+    )
+    parser.add_argument(
         "--data-dir",
         type=str,
         default=defaults.get("data_dir", "./data"),

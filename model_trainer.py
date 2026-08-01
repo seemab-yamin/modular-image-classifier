@@ -94,9 +94,15 @@ def create_model(args, num_classes):
 # ============================================================
 # BLOCK 4: TRAINING
 # ============================================================
-def train_epoch(model, train_loader, optimizer, criterion, device, epoch):
+def train_epoch(model, train_loader, optimizer, criterion, device, use_amp):
     """Train one epoch and return metrics."""
     import time
+
+    if use_amp:
+        from torch.cuda.amp import GradScaler, autocast
+
+        # 1. Create scaler
+        scaler = GradScaler()
 
     model.train()
     epoch_start = time.time()
@@ -109,10 +115,20 @@ def train_epoch(model, train_loader, optimizer, criterion, device, epoch):
         labels = labels.to(device, non_blocking=True)
 
         optimizer.zero_grad()
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
+
+        # forward pass with mixed precision if enabled
+        if use_amp:
+            with autocast():
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
 
         batch_time = time.time() - batch_start
         batch_times.append(batch_time)
@@ -203,7 +219,7 @@ def main():
     # 5. Training loop
     for epoch in range(args.epochs):
         epoch_time, avg_batch = train_epoch(
-            model, train_loader, optimizer, criterion, device, epoch
+            model, train_loader, optimizer, criterion, device, args.use_amp
         )
         all_preds, all_labels, val_time, val_acc = validate(model, val_loader, device)
         print_epoch_report(epoch, epoch_time, avg_batch, val_time, val_acc, device)
