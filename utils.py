@@ -1,6 +1,8 @@
-# config_loader.py
 import argparse
+import random
 
+import numpy as np
+import torch
 import yaml
 
 
@@ -84,3 +86,26 @@ def parse_args_with_defaults(config_path="config.yaml"):
     )
 
     return parser.parse_args()
+
+
+def set_seed(seed: int = 42, deterministic: bool = True):
+    # Sets seeds for everything
+    random.seed(seed)  # Python's random
+    np.random.seed(seed)  # NumPy
+    torch.manual_seed(seed)  # PyTorch (CPU)
+    torch.cuda.manual_seed_all(seed)  # PyTorch (GPU)
+
+    # CuDNN settings (critical for reproducibility)
+    if deterministic:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    else:
+        torch.backends.cudnn.deterministic = False
+        torch.backends.cudnn.benchmark = True
+
+
+def seed_worker(worker_id):
+    """Ensure each DataLoader worker has different but reproducible seeds."""
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)

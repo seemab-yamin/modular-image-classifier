@@ -4,6 +4,8 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
+from utils import seed_worker
+
 CIFAR10_CLASSES = [
     "airplane",
     "automobile",
@@ -114,6 +116,7 @@ class DatasetInfo:
 
 def make_dataloaders(
     dataset_name: str = "cifar10",
+    seed: int = 42,
     batch_size: int = 32,
     num_workers: int = 4,
     data_dir: str = "./data",
@@ -190,6 +193,8 @@ def make_dataloaders(
         "pin_memory": (num_workers > 0)
         and (device == "cuda"),  # default, will be set to True if device is CUDA
         "drop_last": True,  # drop last incomplete batch
+        "worker_init_fn": seed_worker,
+        "generator": torch.Generator().manual_seed(seed),  # for reproducibility
     }
 
     # Build dataloaders

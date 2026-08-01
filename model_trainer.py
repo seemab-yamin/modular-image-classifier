@@ -1,12 +1,4 @@
-import time
-
-import torch
-import torch.nn as nn
-from torch.optim import Adam
-
-from config_loader import parse_args_with_defaults
-from data_loader import make_dataloaders
-from model_factory import make_model
+from utils import parse_args_with_defaults, set_seed
 
 if __name__ == "__main__":
     # Parse args with YAML defaults
@@ -22,8 +14,20 @@ if __name__ == "__main__":
     print(f"Pretrained: {args.pretrained}")
     print(f"Freeze backbone: {args.freeze_backbone}")
 
+    set_seed(args.seed)
+
+    import time
+
+    import torch
+    import torch.nn as nn
+    from torch.optim import Adam
+
+    from data_loader import make_dataloaders
+    from model_factory import make_model
+
     train_loader, val_loader, info = make_dataloaders(
         dataset_name=args.dataset,
+        seed=args.seed,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         data_dir=args.data_dir,

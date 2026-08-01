@@ -1,4 +1,5 @@
 # config.yaml
+seed: 20
 arch: "custom"
 epochs: 10
 dataset: "cifar10"
