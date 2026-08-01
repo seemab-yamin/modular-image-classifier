@@ -213,7 +213,7 @@ def main():
 
     # 7. Save artifacts
     cm_path = os.path.join(
-        args.reports_dir, "part_1_results", f"cm_{args.arch}_{args.dataset}.png"
+        args.reports_dir, "part_1_results", f"cm_{args.arch}_MODEL_{args.dataset}.png"
     )
     save_confusion_matrix(
         metrics["confusion_matrix"],
@@ -233,7 +233,7 @@ def main():
 
     # 8. Save checkpoint
     checkpoint_path = os.path.join(
-        args.reports_dir, "checkpoints", f"{args.arch}_{args.dataset}_best.pth"
+        args.reports_dir, "checkpoints", f"{args.arch}_MODEL_{args.dataset}_best.pth"
     )
     torch.save(
         {
