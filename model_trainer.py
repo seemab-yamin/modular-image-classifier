@@ -2,7 +2,7 @@ from utils import parse_args_with_defaults, set_seed
 
 if __name__ == "__main__":
     # Parse args with YAML defaults
-    args = parse_args_with_defaults("config.yaml")
+    args = parse_args_with_defaults()
 
     # Access arguments
     print(f"Architecture: {args.arch}")
