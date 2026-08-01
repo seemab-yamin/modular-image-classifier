@@ -54,7 +54,7 @@ def make_model(arch, in_channels, num_classes, pretrained, freeze_backbone):
 
         model.classifier[2] = nn.Linear(model.classifier[2].in_features, num_classes)
     elif arch == "vit":
-        model = models.vit_b_16(weights="DEFAULT" if pretrained else None)
+        model = models.vit_b_32(weights="DEFAULT" if pretrained else None)
 
         # for fine tuning we freeze parameters
         # so learning from Image Net doesn't lose while training
