@@ -28,6 +28,13 @@ def parse_args_with_defaults(config_path="config.yaml"):
         help="Model architecture",
     )
     parser.add_argument(
+        "--seed",
+        type=int,
+        default=defaults.get("seed", 42),
+        help="Reproducibility seed",
+    )
+
+    parser.add_argument(
         "--epochs",
         type=int,
         default=defaults.get("epochs", 10),

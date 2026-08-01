@@ -1,4 +1,3 @@
-import argparse
 import time
 
 import torch
@@ -15,6 +14,7 @@ if __name__ == "__main__":
 
     # Access arguments
     print(f"Architecture: {args.arch}")
+    print(f"Seed: {args.seed}")
     print(f"Epochs: {args.epochs}")
     print(f"Dataset: {args.dataset}")
     print(f"Batch size: {args.batch_size}")
