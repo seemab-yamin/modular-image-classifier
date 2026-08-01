@@ -1,8 +1,9 @@
-from utils import parse_args_with_defaults, set_seed
 import os
+
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
+
+from utils import parse_args_with_defaults, set_seed
 
 # ============================================================
 # BLOCK 1: CONFIGURATION & SETUP
@@ -14,7 +15,7 @@ def setup():
 
     # Create results directories
     os.makedirs(args.reports_dir, exist_ok=True)
-    os.makedirs(os.path.join(args.reports_dir, "confusion_matrices"), exist_ok=True)
+    os.makedirs(os.path.join(args.reports_dir, "part_1_results"), exist_ok=True)
     os.makedirs(os.path.join(args.reports_dir, "metrics"), exist_ok=True)
 
     return args
@@ -49,6 +50,7 @@ def create_model(args, num_classes):
     """Create model and optimizer."""
     import torch.nn as nn
     from torch.optim import Adam
+
     from model_factory import make_model
 
     model = make_model(
@@ -115,6 +117,7 @@ def train_epoch(model, train_loader, optimizer, criterion, device, epoch):
 def validate(model, val_loader, device):
     """Validate model and return accuracy."""
     import time
+
     import torch
 
     model.eval()
@@ -198,34 +201,6 @@ def save_confusion_matrix(cm, class_names, save_path, title="Confusion Matrix"):
     print(f"✅ Confusion matrix saved: {save_path}")
 
 
-def save_metrics_report(
-    report, metrics_file, cm, precision, recall, f1, support, class_names
-):
-    """Save metrics to JSON file."""
-    import json
-
-    metrics_data = {
-        "classification_report": report,
-        "confusion_matrix": cm.tolist(),
-        "per_class_metrics": {
-            class_names[i]: {
-                "precision": float(precision[i]),
-                "recall": float(recall[i]),
-                "f1_score": float(f1[i]),
-                "support": int(support[i]),
-            }
-            for i in range(len(class_names))
-        },
-        "macro_f1": float(report["macro avg"]["f1-score"]),
-        "weighted_accuracy": float(report["weighted avg"]["precision"]),
-    }
-
-    with open(metrics_file, "w") as f:
-        json.dump(metrics_data, f, indent=2)
-
-    print(f"✅ Metrics saved: {metrics_file}")
-
-
 # ============================================================
 # BLOCK 7: REPORTING
 # ============================================================
@@ -268,6 +243,65 @@ def print_final_metrics(report, cm, class_names, model_arch, dataset):
             f"{int(report[name]['support']):<10}"
         )
     print("=" * 60 + "\n")
+
+
+def save_summary_report(report, class_names, model_arch, dataset, save_path):
+    """
+    Save summary report with class-wise and global metrics.
+    Each experiment appends a block with:
+    - Header line: Experiment: {model_arch} | Dataset: {dataset}
+    - Class-wise metrics table (pandas-style)
+    - Global aggregates table
+    - Empty line between experiments
+    """
+    import pandas as pd
+
+    # Prepare class-wise data
+    class_data = []
+    for name in class_names:
+        class_data.append(
+            {
+                "Class": name,
+                "Precision": report[name]["precision"],
+                "Recall": report[name]["recall"],
+                "F1-Score": report[name]["f1-score"],
+                "Support": int(report[name]["support"]),
+            }
+        )
+
+    class_df = pd.DataFrame(class_data)
+
+    # Prepare global aggregates
+    global_data = {
+        "Metric": ["Macro F1", "Weighted Precision", "Weighted Recall", "Weighted F1"],
+        "Score": [
+            report["macro avg"]["f1-score"],
+            report["weighted avg"]["precision"],
+            report["weighted avg"]["recall"],
+            report["weighted avg"]["f1-score"],
+        ],
+    }
+    global_df = pd.DataFrame(global_data)
+
+    # Write to file (append mode)
+    with open(save_path, "a") as f:
+        # Header
+        f.write(f"Experiment: {model_arch} | Dataset: {dataset}\n")
+        f.write("-" * 60 + "\n")
+
+        # Class-wise metrics
+        f.write("\nClass-wise Metrics:\n")
+        f.write(class_df.to_string(index=False))
+        f.write("\n\n")
+
+        # Global aggregates
+        f.write("Global Metrics:\n")
+        f.write(global_df.to_string(index=False))
+        f.write("\n")
+        f.write("=" * 60 + "\n")
+        f.write("\n")  # Empty line between experiments
+
+    print(f"✅ Summary report appended: {save_path}")
 
 
 # ============================================================
@@ -324,8 +358,8 @@ def main():
     print_final_metrics(report, cm, info.class_names, args.arch, args.dataset)
 
     # 2. Save confusion matrix
-    cm_filename = (
-        f"{args.reports_dir}/confusion_matrices/cm_{args.arch}_{args.dataset}.png"
+    cm_filename = os.path.join(
+        args.reports_dir, "part_1_results", f"cm_{args.arch}_{args.dataset}.png"
     )
     save_confusion_matrix(
         cm,
@@ -334,12 +368,14 @@ def main():
         title=f"Confusion Matrix - {args.arch} on {args.dataset}",
     )
 
-    # 3. Save metrics report
-    metrics_filename = (
-        f"{args.reports_dir}/metrics/metrics_{args.arch}_{args.dataset}.json"
-    )
-    save_metrics_report(
-        report, metrics_filename, cm, precision, recall, f1, support, info.class_names
+    # 3. Save summary report (appends to file)
+    summary_filename = os.path.join(args.reports_dir, "part_1_results", "summary.txt")
+    save_summary_report(
+        report,
+        info.class_names,
+        args.arch,
+        args.dataset,
+        summary_filename,
     )
 
     # 4. Save model checkpoint
