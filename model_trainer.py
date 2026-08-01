@@ -5,9 +5,9 @@ Modular Image Classifier - Training Script
 import os
 
 import torch
-from eval import evaluate, save_confusion_matrix, save_summary_report
 
 from data_loader import make_dataloaders
+from eval import evaluate, save_confusion_matrix, save_summary_report
 from model_factory import make_model
 from utils import parse_args_with_defaults, set_seed
 
