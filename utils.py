@@ -1,5 +1,6 @@
 import argparse
 import random
+import sys
 
 import numpy as np
 import torch
@@ -8,21 +9,42 @@ import yaml
 
 def load_config(config_path="config.yaml"):
     """Load configuration from YAML file."""
-    with open(config_path, "r") as f:
-        return yaml.safe_load(f)
+    try:
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Warning: Config file '{config_path}' not found. Using defaults.")
+        return {}
+    except yaml.YAMLError as e:
+        print(f"Error parsing config file '{config_path}': {e}")
+        sys.exit(1)
 
 
-def parse_args_with_defaults(config_path="config.yaml"):
+def parse_args_with_defaults():
     """
     Parse CLI arguments with defaults from YAML config.
     CLI args override YAML defaults.
     """
-    # Load defaults from YAML
-    defaults = load_config(config_path)
-
-    # Set up argument parser with defaults from YAML
+    # Set up argument parser
     parser = argparse.ArgumentParser(description="Image Classification Training")
 
+    # Config file path (parsed first, before loading defaults)
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="config.yaml",
+        help="Path to config file (default: config.yaml)",
+    )
+
+    # Parse only --config first to know which config file to load
+    # We use parse_known_args to avoid errors for unknown args
+    known_args, _ = parser.parse_known_args()
+    config_path = known_args.config
+
+    # Load defaults from YAML config file
+    defaults = load_config(config_path)
+
+    # Add all arguments with defaults from config file
     parser.add_argument(
         "--arch",
         type=str,
@@ -35,7 +57,6 @@ def parse_args_with_defaults(config_path="config.yaml"):
         default=defaults.get("seed", 42),
         help="Reproducibility seed",
     )
-
     parser.add_argument(
         "--epochs",
         type=int,
@@ -85,17 +106,22 @@ def parse_args_with_defaults(config_path="config.yaml"):
         help="Root directory for the dataset",
     )
 
-    return parser.parse_args()
+    # Now parse all args with the fully built parser
+    args = parser.parse_args()
+
+    # Store config path in args for reference
+    args.config_path = config_path
+
+    return args
 
 
 def set_seed(seed: int = 42, deterministic: bool = True):
-    # Sets seeds for everything
-    random.seed(seed)  # Python's random
-    np.random.seed(seed)  # NumPy
-    torch.manual_seed(seed)  # PyTorch (CPU)
-    torch.cuda.manual_seed_all(seed)  # PyTorch (GPU)
+    """Set random seeds for reproducibility."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
-    # CuDNN settings (critical for reproducibility)
     if deterministic:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
@@ -109,3 +135,27 @@ def seed_worker(worker_id):
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
+
+
+# ==================== Usage Example ====================
+if __name__ == "__main__":
+    args = parse_args_with_defaults()
+
+    print("=" * 50)
+    print("Configuration")
+    print("=" * 50)
+    print(f"Config file: {args.config_path}")
+    print(f"Architecture: {args.arch}")
+    print(f"Seed: {args.seed}")
+    print(f"Epochs: {args.epochs}")
+    print(f"Dataset: {args.dataset}")
+    print(f"Batch size: {args.batch_size}")
+    print(f"Learning rate: {args.learning_rate}")
+    print(f"Num workers: {args.num_workers}")
+    print(f"Pretrained: {args.pretrained}")
+    print(f"Freeze backbone: {args.freeze_backbone}")
+    print(f"Root dir: {args.root_dir}")
+    print("=" * 50)
+
+    # Set seeds
+    set_seed(args.seed, deterministic=True)
