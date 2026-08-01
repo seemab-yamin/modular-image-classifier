@@ -116,7 +116,7 @@ def make_dataloaders(
     dataset_name: str = "cifar10",
     batch_size: int = 32,
     num_workers: int = 4,
-    root_dir: str = "./data",
+    data_dir: str = "./data",
     augment: bool = True,
     model_arch: str = "",
     resize_size: tuple = (224, 224),
@@ -171,13 +171,13 @@ def make_dataloaders(
 
     # Build datasets
     train_dataset = dataset_class(
-        root=root_dir,
+        root=data_dir,
         download=True,
         transform=train_transform,
         **dataset_config["train_kwargs"],
     )
     val_dataset = dataset_class(
-        root=root_dir,
+        root=data_dir,
         download=True,
         transform=val_transform,
         **dataset_config["test_kwargs"],
@@ -236,7 +236,7 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         augment=args.augment,
-        root_dir=args.root_dir,
+        data_dir=args.data_dir,
     )
 
     print(f"Dataset: {args.dataset}")

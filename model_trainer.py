@@ -5,52 +5,28 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 
+from config_loader import parse_args_with_defaults
 from data_loader import make_dataloaders
 from model_factory import make_model
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--arch", type=str, default="custom", help="Model architecture")
-    parser.add_argument(
-        "--epochs", type=int, default=10, help="Number of epochs to train"
-    )
-    parser.add_argument(
-        "--dataset", type=str, default="cifar10", help="Name of the dataset"
-    )
-    parser.add_argument(
-        "--batch-size", type=int, default=32, help="Batch size for dataloaders"
-    )
-    parser.add_argument(
-        "--learning-rate",
-        type=float,
-        default=0.001,
-        help="Learning rate for the optimizer",
-    )
-    parser.add_argument(
-        "--num-workers", type=int, default=4, help="Number of workers for dataloaders"
-    )
-    parser.add_argument(
-        "--pretrained",
-        action="store_true",
-        default=False,
-        help="Use pretrained weights",
-    )
-    parser.add_argument(
-        "--freeze-backbone",
-        action="store_true",
-        default=False,
-        help="Freeze the backbone of the model",
-    )
-    parser.add_argument(
-        "--root-dir", type=str, default="./data", help="Root directory for the dataset"
-    )
-    args = parser.parse_args()
+    # Parse args with YAML defaults
+    args = parse_args_with_defaults("config.yaml")
+
+    # Access arguments
+    print(f"Architecture: {args.arch}")
+    print(f"Epochs: {args.epochs}")
+    print(f"Dataset: {args.dataset}")
+    print(f"Batch size: {args.batch_size}")
+    print(f"Learning rate: {args.learning_rate}")
+    print(f"Pretrained: {args.pretrained}")
+    print(f"Freeze backbone: {args.freeze_backbone}")
 
     train_loader, val_loader, info = make_dataloaders(
         dataset_name=args.dataset,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
-        root_dir=args.root_dir,
+        data_dir=args.data_dir,
         model_arch=args.arch,
     )
     print(f"Created dataloaders with {info.num_classes} classes")
@@ -60,14 +36,14 @@ if __name__ == "__main__":
         arch=args.arch,
         in_channels=3,
         num_classes=info.num_classes,
-        pretrained=args.pretrained,
+        pretrained=args.pre_trained,
         freeze_backbone=args.freeze_backbone,
     )
-    print(f"Selected model:\n{args.arch} with pretrained={args.pretrained}")
+    print(f"Selected model:\n{args.arch} with pretrained={args.pre_trained}")
     model_summary = str(model)
     print(f"Created model:\n{model_summary}")
 
-    if args.pretrained and args.freeze_backbone:
+    if args.pre_trained and args.freeze_backbone:
         update_params = filter(lambda p: p.requires_grad, model.parameters())
     else:
         update_params = model.parameters()
