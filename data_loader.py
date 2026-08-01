@@ -232,7 +232,7 @@ if __name__ == "__main__":
     parser.add_argument("--num-workers", type=int, default=4, help="Number of workers")
     parser.add_argument("--augment", action="store_true", help="Enable augmentation")
     parser.add_argument(
-        "--root-dir", type=str, default="./data", help="Root directory for the dataset"
+        "--data-dir", type=str, default="./data", help="Data directory for the dataset"
     )
     args = parser.parse_args()
 

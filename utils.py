@@ -100,10 +100,16 @@ def parse_args_with_defaults():
         help="Freeze the backbone of the model",
     )
     parser.add_argument(
-        "--root-dir",
+        "--data-dir",
         type=str,
-        default=defaults.get("root_dir", "./data"),
-        help="Root directory for the dataset",
+        default=defaults.get("data_dir", "./data"),
+        help="Data directory for the dataset",
+    )
+    parser.add_argument(
+        "--reports-dir",
+        type=str,
+        default=defaults.get("reports_dir", "./reports"),
+        help="Directory for storing reports",
     )
 
     # Now parse all args with the fully built parser
@@ -154,7 +160,8 @@ if __name__ == "__main__":
     print(f"Num workers: {args.num_workers}")
     print(f"Pretrained: {args.pretrained}")
     print(f"Freeze backbone: {args.freeze_backbone}")
-    print(f"Root dir: {args.root_dir}")
+    print(f"Data dir: {args.data_dir}")
+    print(f"Reports dir: {args.reports_dir}")
     print("=" * 50)
 
     # Set seeds
