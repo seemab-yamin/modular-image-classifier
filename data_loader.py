@@ -208,6 +208,11 @@ def make_dataloaders(
     train_transforms = [transforms.ToTensor()]
     if resize_size:
         train_transforms = [transforms.Resize(resize_size)] + train_transforms
+        input_shape = (
+            input_shape[0],
+            resize_size[0],
+            resize_size[1],
+        )  # Update input shape if resized
     if augment:
         train_transforms = [transforms.RandomHorizontalFlip()] + train_transforms
 
@@ -288,7 +293,6 @@ def make_dataloaders(
         std=std,
         class_names=dataset_config["class_names"],
     )
-
     return train_loader, val_loader, info
 
 

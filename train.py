@@ -8,6 +8,7 @@ import torch
 
 from data_loader import make_dataloaders
 from eval import evaluate, save_confusion_matrix, save_summary_report
+from export_onnx import export_model_to_onnx
 from model_factory import make_model
 from utils import parse_args_with_defaults, set_seed
 
@@ -263,7 +264,7 @@ def main():
 
     # 7. Save artifacts
     cm_path = os.path.join(
-        args.artifacts_dir, "part_1_results", f"cm_{args.arch}_MODEL_{args.dataset}.png"
+        args.artifacts_dir, "part_1_results", f"cm_{args.arch}_{args.dataset}.png"
     )
     save_confusion_matrix(
         metrics["confusion_matrix"],
@@ -283,7 +284,7 @@ def main():
 
     # 8. Save checkpoint
     checkpoint_path = os.path.join(
-        args.artifacts_dir, "checkpoints", f"{args.arch}_MODEL_{args.dataset}_best.pth"
+        args.artifacts_dir, "checkpoints", f"{args.arch}_{args.dataset}_best.pth"
     )
     torch.save(
         {
@@ -296,6 +297,16 @@ def main():
         checkpoint_path,
     )
     print(f"✅ Checkpoint saved: {checkpoint_path}")
+
+    # export the model to ONNX format
+    onnx_path = os.path.join(
+        args.artifacts_dir,
+        "checkpoints",
+        f"{args.arch}_{args.dataset}.onnx",
+    )
+    batch_size = 1
+    channels, height, width = info.input_shape
+    export_model_to_onnx(model, onnx_path, batch_size, channels, height, width, device)
 
     print("\n" + "=" * 60)
     print("TRAINING COMPLETE")
