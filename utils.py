@@ -174,18 +174,8 @@ if __name__ == "__main__":
     print("=" * 50)
     print("Configuration")
     print("=" * 50)
-    print(f"Config file: {args.config_path}")
-    print(f"Architecture: {args.arch}")
-    print(f"Seed: {args.seed}")
-    print(f"Epochs: {args.epochs}")
-    print(f"Dataset: {args.dataset}")
-    print(f"Batch size: {args.batch_size}")
-    print(f"Learning rate: {args.learning_rate}")
-    print(f"Num workers: {args.num_workers}")
-    print(f"Pretrained: {args.pre_trained}")
-    print(f"Freeze backbone: {args.freeze_backbone}")
-    print(f"Data dir: {args.data_dir}")
-    print(f"Artifacts dir: {args.artifacts_dir}")
+    for arg in vars(args):
+        print(f"{arg}: {getattr(args, arg)} : type: {type(getattr(args, arg))}")
     print("=" * 50)
 
     # Set seeds
