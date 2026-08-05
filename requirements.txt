@@ -1,4 +1,6 @@
 matplotlib
+onnx
+onnxscript
 pandas
 pyyaml
 scikit-learn
