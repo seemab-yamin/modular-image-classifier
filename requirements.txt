@@ -1,5 +1,7 @@
 matplotlib
 onnx
+onnxruntime
+onnxruntime-tools
 onnxscript
 pandas
 pyyaml

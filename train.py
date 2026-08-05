@@ -8,7 +8,7 @@ import torch
 
 from data_loader import make_dataloaders
 from eval import evaluate, save_confusion_matrix, save_summary_report
-from export_onnx import export_model_to_onnx
+from export_onnx import export_model_fp32__to_onnx
 from model_factory import make_model
 from utils import parse_args_with_defaults, set_seed
 
@@ -25,6 +25,7 @@ def setup():
     # Create results directories
     os.makedirs(args.artifacts_dir, exist_ok=True)
     os.makedirs(os.path.join(args.artifacts_dir, "part_1_results"), exist_ok=True)
+    os.makedirs(os.path.join(args.artifacts_dir, "part_2_results"), exist_ok=True)
     os.makedirs(os.path.join(args.artifacts_dir, "checkpoints"), exist_ok=True)
     return args
 
@@ -302,11 +303,13 @@ def main():
     onnx_path = os.path.join(
         args.artifacts_dir,
         "part_2_results",
-        f"{args.arch}_{args.dataset}.onnx",
+        f"{args.arch}_fp32_{args.dataset}.onnx",
     )
     batch_size = 1
     channels, height, width = info.input_shape
-    export_model_to_onnx(model, onnx_path, batch_size, channels, height, width, device)
+    export_model_fp32__to_onnx(
+        model, onnx_path, batch_size, channels, height, width, device
+    )
 
     print("\n" + "=" * 60)
     print("TRAINING COMPLETE")

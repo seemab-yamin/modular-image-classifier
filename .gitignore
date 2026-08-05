@@ -1,0 +1,4 @@
+*.tar.gz
+data
+__pycache__
+.vscode
