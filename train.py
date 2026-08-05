@@ -301,7 +301,7 @@ def main():
     # export the model to ONNX format
     onnx_path = os.path.join(
         args.artifacts_dir,
-        "checkpoints",
+        "part_2_results",
         f"{args.arch}_{args.dataset}.onnx",
     )
     batch_size = 1
