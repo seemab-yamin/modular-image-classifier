@@ -27,11 +27,11 @@ A modular, extensible image classification framework with support for multiple b
 | **Reproducibility** | Fixed seed with `--seed` | ✅ Implemented |
 | **Transfer Learning** | Freeze backbone with `--freeze-backbone` | ✅ Implemented |
 | **Evaluation** | Class-wise + global metrics, confusion matrix plots | ✅ Implemented |
-| **Mixed Precision (AMP)** | Faster training with `--use-amp` | 🚧 In Progress |
-| **LR Scheduler** | Cosine annealing with `--use-scheduler` | 🚧 In Progress |
-| **Gradient Clipping** | Prevent gradient explosion with `--use-grad-clip` | 🚧 In Progress |
-| **Weight Decay** | L2 regularization via AdamW with `--use-weight-decay` | 🚧 In Progress |
-| **Deployment** | ONNX export + PTQ (dynamic/static) with comparison report | 📅 Planned |
+| **Mixed Precision (AMP)** | Faster training with `--use-amp` | ✅ Implemented |
+| **LR Scheduler** | Cosine annealing with `--use-scheduler` | ✅ Implemented |
+| **Gradient Clipping** | Prevent gradient explosion with `--use-grad-clip` | ✅ Implemented |
+| **Weight Decay** | L2 regularization via AdamW with `--use-weight-decay` | ✅ Implemented |
+| **Deployment** | ONNX export + PTQ (dynamic/static) with comparison report | 🚧 In Progress |
 
 ---
 
@@ -122,10 +122,10 @@ nohup python3 model_trainer.py --config configs/base.yaml > results/output.txt &
 | `--reports-dir` | str | `./artifacts` | Output directory | ✅ |
 | `--pre-trained` | flag | `False` | Use pretrained weights | ✅ |
 | `--freeze-backbone` | flag | `False` | Freeze backbone layers | ✅ |
-| `--use-amp` | flag | `False` | Enable mixed precision | 🚧 |
-| `--use-scheduler` | flag | `False` | Use cosine scheduler | 🚧 |
-| `--use-grad-clip` | float | `None` | Gradient clipping value | 🚧 |
-| `--use-weight-decay` | float | `None` | Weight decay value | 🚧 |
+| `--use-amp` | flag | `False` | Enable mixed precision | ✅ |
+| `--use-scheduler` | flag | `False` | Use cosine scheduler | ✅ |
+| `--use-grad-clip` | float | `None` | Gradient clipping value | ✅ |
+| `--use-weight-decay` | float | `None` | Weight decay value | ✅ |
 
 ### YAML Config Example
 
@@ -247,17 +247,6 @@ The following features are currently **in progress** or **planned** for future r
 
 ### In Progress 🚧
 
-| Feature | Description | Expected Release |
-|:---|:---|:---|
-| **Mixed Precision (AMP)** | Faster training with automatic mixed precision via `--use-amp` | v1.1.0 |
-| **LR Scheduler** | Cosine annealing learning rate scheduler via `--use-scheduler` | v1.1.0 |
-| **Gradient Clipping** | Prevent gradient explosion with `--use-grad-clip` | v1.1.0 |
-| **Weight Decay** | L2 regularization via AdamW with `--use-weight-decay` | v1.1.0 |
-
-### Planned 📅
-
-| Feature | Description | Expected Release |
-|:---|:---|:---|
 | **ONNX Export** | Export trained models to ONNX format | v1.2.0 |
 | **Post-Training Quantization (PTQ)** | Dynamic and static quantization | v1.2.0 |
 
