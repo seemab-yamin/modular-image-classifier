@@ -106,6 +106,24 @@ def parse_args_with_defaults():
         help="Use automatic mixed precision (AMP) for training",
     )
     parser.add_argument(
+        "--use-weight-decay",
+        action="store_true",
+        default=defaults.get("use_weight_decay", False),
+        help="Use weight decay for the optimizer",
+    )
+    parser.add_argument(
+        "--use-scheduler",
+        type=float,
+        default=defaults.get("use_scheduler", 1e-6),
+        help="Use learning rate scheduler with specified minimum learning rate",
+    )
+    parser.add_argument(
+        "--use-grad-clip",
+        type=float,
+        default=defaults.get("use_grad_clip", 1.0),
+        help="Use gradient clipping with specified maximum norm",
+    )
+    parser.add_argument(
         "--data-dir",
         type=str,
         default=defaults.get("data_dir", "./data"),

@@ -66,7 +66,6 @@ def create_model(args, num_classes):
     """Create model, optimizer, and criterion."""
 
     import torch.nn as nn
-    from torch.optim import Adam
 
     model = make_model(
         arch=args.arch,
@@ -85,16 +84,40 @@ def create_model(args, num_classes):
     else:
         update_params = model.parameters()
 
-    optimizer = Adam(params=update_params, lr=args.learning_rate)
-    criterion = nn.CrossEntropyLoss()
+    if args.use_weight_decay:
+        from torch.optim import AdamW
 
-    return model, optimizer, criterion
+        print("Using weight decay for optimizer")
+        optimizer = AdamW(
+            params=update_params,
+            lr=args.learning_rate,
+            weight_decay=args.use_weight_decay,
+        )
+    else:
+        from torch.optim import Adam
+
+        optimizer = Adam(params=update_params, lr=args.learning_rate)
+
+    if args.use_scheduler:
+        from torch.optim.lr_scheduler import CosineAnnealingLR
+
+        scheduler = CosineAnnealingLR(
+            optimizer, T_max=args.epochs, eta_min=args.use_scheduler
+        )
+        print(f"Using CosineAnnealingLR scheduler with eta_min={args.use_scheduler}")
+    else:
+        scheduler = None
+
+    criterion = nn.CrossEntropyLoss()
+    return model, optimizer, criterion, scheduler
 
 
 # ============================================================
 # BLOCK 4: TRAINING
 # ============================================================
-def train_epoch(model, train_loader, optimizer, criterion, device, use_amp):
+def train_epoch(
+    model, train_loader, optimizer, criterion, device, use_amp, use_grad_clip
+):
     """Train one epoch and return metrics."""
     import time
 
@@ -129,6 +152,9 @@ def train_epoch(model, train_loader, optimizer, criterion, device, use_amp):
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+
+        if use_grad_clip:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=use_grad_clip)
 
         batch_time = time.time() - batch_start
         batch_times.append(batch_time)
@@ -209,7 +235,7 @@ def main():
     train_loader, val_loader, info = load_data(args)
 
     # 3. Create model
-    model, optimizer, criterion = create_model(args, info.num_classes)
+    model, optimizer, criterion, scheduler = create_model(args, info.num_classes)
 
     # 4. Device
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -219,8 +245,16 @@ def main():
     # 5. Training loop
     for epoch in range(args.epochs):
         epoch_time, avg_batch = train_epoch(
-            model, train_loader, optimizer, criterion, device, args.use_amp
+            model,
+            train_loader,
+            optimizer,
+            criterion,
+            device,
+            args.use_amp,
+            args.use_grad_clip,
         )
+        if scheduler:
+            scheduler.step()
         all_preds, all_labels, val_time, val_acc = validate(model, val_loader, device)
         print_epoch_report(epoch, epoch_time, avg_batch, val_time, val_acc, device)
 
