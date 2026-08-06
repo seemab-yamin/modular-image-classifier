@@ -1,6 +1,7 @@
 matplotlib
 onnx
 onnxruntime
+onnxruntime-gpu==1.26.0   # Built for CUDA 12.8
 onnxruntime-tools
 onnxscript
 pandas
