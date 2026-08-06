@@ -10,8 +10,8 @@ from data_loader import make_dataloaders
 from eval import evaluate, save_confusion_matrix, save_summary_report
 from export_onnx import (
     export_model_fp32__to_onnx,
-    export_model_fp8_dynamic_to_onnx,
-    export_model_fp8_static_to_onnx,
+    export_model_int8_dynamic_to_onnx,
+    export_model_int8_static_to_onnx,
 )
 from model_factory import make_model
 from utils import parse_args_with_defaults, set_seed
@@ -326,9 +326,9 @@ def main():
         model, onnx_fp32_path, batch_size, channels, height, width, device
     )
     print(f"✅ Exported FP32 model to ONNX: {onnx_fp32_path}")
-    export_model_fp8_dynamic_to_onnx(onnx_fp32_path, onnx_int8_dynamic_path)
+    export_model_int8_dynamic_to_onnx(onnx_fp32_path, onnx_int8_dynamic_path)
     print(f"✅ Exported INT8 dynamic model to ONNX: {onnx_int8_dynamic_path}")
-    export_model_fp8_static_to_onnx(onnx_fp32_path, onnx_int8_static_path, val_loader)
+    export_model_int8_static_to_onnx(onnx_fp32_path, onnx_int8_static_path, val_loader)
     print(f"✅ Exported INT8 static model to ONNX: {onnx_int8_static_path}")
 
     print("\n" + "=" * 60)

@@ -16,14 +16,14 @@ def export_model_fp32__to_onnx(
         input_names=["input"],
         output_names=["output"],
         dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
-        dynamo=False,
         opset_version=18,
+        dynamo=True,
         do_constant_folding=True,  # Reduces model size and speeds up inference
         verbose=False,  # Set to True for detailed export logs
     )
 
 
-def export_model_fp8_dynamic_to_onnx(onnx_fp32_path, onnx_int8_dynamic_path):
+def export_model_int8_dynamic_to_onnx(onnx_fp32_path, onnx_int8_dynamic_path):
     """
     Exports the trained PyTorch model to ONNX format fp8.
     """
@@ -37,7 +37,7 @@ def export_model_fp8_dynamic_to_onnx(onnx_fp32_path, onnx_int8_dynamic_path):
     )
 
 
-def export_model_fp8_static_to_onnx(onnx_fp32_path, onnx_int8_static_path, val_loader):
+def export_model_int8_static_to_onnx(onnx_fp32_path, onnx_int8_static_path, val_loader):
     """
     Exports the trained PyTorch model to ONNX format fp8.
     """
@@ -144,6 +144,14 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
     parser.add_argument("--num-workers", type=int, default=4, help="Number of workers")
     parser.add_argument("--augment", action="store_true", help="Enable augmentation")
+    parser.add_argument("--arch", type=str, help="Model architecture")
+    parser.add_argument(
+        "--artifacts-dir",
+        type=str,
+        default="./artifacts",
+        help="Directory to save artifacts",
+    )
+
     parser.add_argument(
         "--data-dir", type=str, default="./data", help="Data directory for the dataset"
     )
@@ -193,13 +201,13 @@ if __name__ == "__main__":
     )
 
     # export the model to ONNX format with dynamic quantization
-    # export_model_fp8_dynamic_to_onnx(
+    # export_model_int8_dynamic_to_onnx(
     #     onnx_fp32_path=args.onnx_fp32_path,
     #     onnx_int8_dynamic_path=args.onnx_int8_dynamic_path,
     # )
 
     # export the model to ONNX format with static quantization
-    # export_model_fp8_static_to_onnx(
+    # export_model_int8_static_to_onnx(
     #     onnx_fp32_path=args.onnx_fp32_path,
     #     onnx_int8_static_path=args.onnx_int8_static_path,
     #     val_loader=val_loader,
