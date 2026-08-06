@@ -17,7 +17,6 @@ def export_model_fp32__to_onnx(
         output_names=["output"],
         dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
         opset_version=18,
-        dynamo=True,
         do_constant_folding=True,  # Reduces model size and speeds up inference
         verbose=False,  # Set to True for detailed export logs
     )
