@@ -72,8 +72,8 @@ def export_model_fp8_static_to_onnx(onnx_fp32_path, onnx_int8_static_path, val_l
         model_input=onnx_fp32_path,
         model_output=onnx_int8_static_path,
         calibration_data_reader=calibration_reader,
-        quant_format=QuantFormat.QDQ,  # Use QDQ format for better accuracy
-        weight_type=QuantType.QUInt8,  # Quantize weights to unsigned INT8
+        activation_type=QuantType.QInt8,
+        weight_type=QuantType.QInt8,
     )
 
 
