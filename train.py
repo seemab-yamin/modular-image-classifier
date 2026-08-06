@@ -8,7 +8,11 @@ import torch
 
 from data_loader import make_dataloaders
 from eval import evaluate, save_confusion_matrix, save_summary_report
-from export_onnx import export_model_fp32__to_onnx
+from export_onnx import (
+    export_model_fp32__to_onnx,
+    export_model_fp8_dynamic_to_onnx,
+    export_model_fp8_static_to_onnx,
+)
 from model_factory import make_model
 from utils import parse_args_with_defaults, set_seed
 
@@ -300,16 +304,32 @@ def main():
     print(f"✅ Checkpoint saved: {checkpoint_path}")
 
     # export the model to ONNX format
-    onnx_path = os.path.join(
+    onnx_fp32_path = os.path.join(
         args.artifacts_dir,
         "part_2_results",
         f"{args.arch}_fp32_{args.dataset}.onnx",
     )
+    onnx_int8_dynamic_path = os.path.join(
+        args.artifacts_dir,
+        "part_2_results",
+        f"{args.arch}_int8_dynamic_{args.dataset}.onnx",
+    )
+    onnx_int8_static_path = os.path.join(
+        args.artifacts_dir,
+        "part_2_results",
+        f"{args.arch}_int8_static_{args.dataset}.onnx",
+    )
+
     batch_size = 1
     channels, height, width = info.input_shape
     export_model_fp32__to_onnx(
-        model, onnx_path, batch_size, channels, height, width, device
+        model, onnx_fp32_path, batch_size, channels, height, width, device
     )
+    print(f"✅ Exported FP32 model to ONNX: {onnx_fp32_path}")
+    export_model_fp8_dynamic_to_onnx(onnx_fp32_path, onnx_int8_dynamic_path)
+    print(f"✅ Exported INT8 dynamic model to ONNX: {onnx_int8_dynamic_path}")
+    export_model_fp8_static_to_onnx(onnx_fp32_path, onnx_int8_static_path, val_loader)
+    print(f"✅ Exported INT8 static model to ONNX: {onnx_int8_static_path}")
 
     print("\n" + "=" * 60)
     print("TRAINING COMPLETE")
