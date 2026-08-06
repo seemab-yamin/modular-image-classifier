@@ -66,10 +66,13 @@ def export_model_fp8_static_to_onnx(onnx_fp32_path, onnx_int8_static_path, val_l
         if i >= 10:  # Limit to 10 batches for calibration
             break
 
+    calibration_reader = CalibrationDataReader(calibration_samples)
     # Apply static post-training quantization
     quantize_static(
         model_input=onnx_fp32_path,
         model_output=onnx_int8_static_path,
+        calibration_data_reader=calibration_reader,
+        quant_format=QuantFormat.QDQ,  # Use QDQ format for better accuracy
         weight_type=QuantType.QUInt8,  # Quantize weights to unsigned INT8
     )
 
