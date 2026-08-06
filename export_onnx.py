@@ -55,7 +55,7 @@ def export_model_fp8_static_to_onnx(onnx_fp32_path, onnx_int8_static_path, val_l
 
         def get_next(self):
             try:
-                return next(self.data_iter)
+                return {"input": next(self.data_iter).numpy()}
             except StopIteration:
                 return None
 
@@ -135,8 +135,9 @@ if __name__ == "__main__":
     # load onnx models
     import onnxruntime as ort
     import torch
-    from eval import evaluate, save_confusion_matrix, save_summary_report
+
     from data_loader import make_dataloaders
+    from eval import evaluate, save_confusion_matrix, save_summary_report
 
     providers = ["CPUExecutionProvider"]
     if torch.cuda.is_available():
