@@ -15,7 +15,8 @@ def export_model_fp32__to_onnx(
         onnx_path,
         input_names=["input"],
         output_names=["output"],
-        dynamic_shapes={"input": {0: torch.export.Dim("batch_size")}},
+        dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
+        dynamo=False,
         opset_version=18,
         do_constant_folding=True,  # Reduces model size and speeds up inference
         verbose=False,  # Set to True for detailed export logs
@@ -113,7 +114,10 @@ if __name__ == "__main__":
         num_workers=args.num_workers,
         augment=args.augment,
         data_dir=args.data_dir,
+        resize_size=(224, 224) if args.arch == "vit" else None,
     )
+
+    # export the model to ONNX format
     export_model_fp8_dynamic_to_onnx(
         onnx_fp32_path=args.onnx_fp32_path,
         onnx_int8_dynamic_path=args.onnx_int8_dynamic_path,
@@ -123,4 +127,75 @@ if __name__ == "__main__":
         onnx_fp32_path=args.onnx_fp32_path,
         onnx_int8_static_path=args.onnx_int8_static_path,
         val_loader=val_loader,
+    )
+
+    # load onnx models
+    import onnxruntime as ort
+    import torch
+    from eval import evaluate, save_confusion_matrix, save_summary_report
+    from data_loader import make_dataloaders
+
+    providers = ["CPUExecutionProvider"]
+    if torch.cuda.is_available():
+        providers.append("CUDAExecutionProvider")
+
+    onnx_fp32_path = "/content/drive/MyDrive/ai-projects/modular-image-classifier/artifacts/part_2_results/vit_cifar10.onnx"
+    train_loader, val_loader, info = make_dataloaders(
+        dataset_name="cifar10",
+        batch_size=1,
+        data_dir="/content/drive/MyDrive/ai-projects/modular-image-classifier/data",
+        resize_size=(224, 224),
+    )
+    session_fp32 = ort.InferenceSession(onnx_fp32_path, providers=providers)
+    input_name = session_fp32.get_inputs()[0].name
+    output_name = session_fp32.get_outputs()[0].name
+
+    import time
+
+    val_start = time.time()
+    all_preds = []
+    all_labels = []
+    for images, labels in val_loader:
+        images = images.cpu().numpy()  # Convert to numpy array for ONNX Runtime
+        outputs = session_fp32.run([output_name], {input_name: images})
+
+        output_tensor = torch.from_numpy(
+            outputs[0]
+        )  # Convert back to tensor for evaluation
+        _, predicted = output_tensor.max(1)
+        all_preds.extend(predicted.cpu().numpy())
+        all_labels.extend(labels.cpu().numpy())
+
+    val_time = time.time() - val_start
+    val_acc = (
+        100
+        * sum(1 for pred, label in zip(all_preds, all_labels) if pred == label)
+        / len(all_labels)
+    )
+
+    metrics = evaluate(all_labels, all_preds, info.class_names)
+
+    import os
+
+    artifacts_dir = (
+        "/content/drive/MyDrive/ai-projects/modular-image-classifier/artifacts"
+    )
+    arch = "vit"
+    dataset = "cifar10"
+
+    cm_path = os.path.join(artifacts_dir, "part_2_results", f"cm_{arch}_{dataset}.png")
+    save_confusion_matrix(
+        metrics["confusion_matrix"],
+        info.class_names,
+        cm_path,
+        title=f"Confusion Matrix - {arch} Model on {dataset}",
+    )
+
+    summary_path = os.path.join(artifacts_dir, "part_2_results", "summary.txt")
+    save_summary_report(
+        metrics["report"],
+        info.class_names,
+        arch,
+        dataset,
+        summary_path,
     )
