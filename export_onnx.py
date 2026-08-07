@@ -230,23 +230,24 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    train_loader, val_loader, info = make_dataloaders(
+        dataset_name=args.dataset,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        augment=args.augment,
+        data_dir=args.data_dir,
+        resize_size=(224, 224) if args.arch == "vit" else None,
+    )
     if args.export_model_to_onnx:
         export_model_to_onnx(
             onnx_fp32_path=args.onnx_fp32_path,
             artifacts_dir=args.artifacts_dir,
             arch=args.arch,
             dataset=args.dataset,
+            val_loader=val_loader,
         )
 
     if args.evaluate_onnx_models:
-        train_loader, val_loader, info = make_dataloaders(
-            dataset_name=args.dataset,
-            batch_size=args.batch_size,
-            num_workers=args.num_workers,
-            augment=args.augment,
-            data_dir=args.data_dir,
-            resize_size=(224, 224) if args.arch == "vit" else None,
-        )
         for onnx_model in args.evaluate_onnx_models:
             evaluate_onnx_model(
                 onnx_path=onnx_model,
