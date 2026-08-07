@@ -149,7 +149,7 @@ def evaluate_onnx_model(onnx_path, val_loader, artifacts_dir):
     return val_acc, metrics, cm_path, summary_path
 
 
-def export_model_to_onnx(onnx_fp32_path, artifacts_dir, arch, dataset):
+def export_model_to_onnx(onnx_fp32_path, artifacts_dir, arch, dataset, val_loader):
     cleaned_onnx_fp32_path = os.path.join(
         artifacts_dir,
         "part_2_results",
