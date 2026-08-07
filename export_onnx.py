@@ -9,6 +9,7 @@ def export_model_fp32__to_onnx(
     """
 
     dummy_input = torch.randn(batch_size, channels, height, width).to(device)
+    model.eval()
     torch.onnx.export(
         model,
         dummy_input,
@@ -20,6 +21,23 @@ def export_model_fp32__to_onnx(
         do_constant_folding=True,  # Reduces model size and speeds up inference
         verbose=False,  # Set to True for detailed export logs
     )
+
+
+def export_model_fp32_cleaned_to_onnx(onnx_path, cleaned_onnx_path):
+    """
+    Cleans the exported ONNX model by removing unnecessary value_info entries.
+    """
+    import onnx
+
+    # Load the ONNX model
+    onnx_model = onnx.load(onnx_path)
+
+    # Remove unnecessary value_info entries
+    while len(onnx_model.graph.value_info) > 0:
+        onnx_model.graph.value_info.pop()
+
+    # Save the cleaned ONNX model
+    onnx.save(onnx_model, cleaned_onnx_path)
 
 
 def export_model_int8_dynamic_to_onnx(onnx_fp32_path, onnx_int8_dynamic_path):
@@ -131,6 +149,30 @@ def evaluate_onnx_model(onnx_path, val_loader, artifacts_dir):
     return val_acc, metrics, cm_path, summary_path
 
 
+def export_model_to_onnx(onnx_fp32_path, artifacts_dir, arch, dataset):
+    cleaned_onnx_fp32_path = os.path.join(
+        artifacts_dir,
+        "part_2_results",
+        f"cleaned_{arch}_fp32_{dataset}.onnx",
+    )
+    onnx_int8_dynamic_path = os.path.join(
+        artifacts_dir,
+        "part_2_results",
+        f"{arch}_int8_dynamic_{dataset}.onnx",
+    )
+    onnx_int8_static_path = os.path.join(
+        artifacts_dir,
+        "part_2_results",
+        f"{arch}_int8_static_{dataset}.onnx",
+    )
+    export_model_fp32_cleaned_to_onnx(onnx_fp32_path, cleaned_onnx_fp32_path)
+    print(f"✅ Cleaned ONNX model saved to: {cleaned_onnx_fp32_path}")
+    export_model_int8_dynamic_to_onnx(cleaned_onnx_fp32_path, onnx_int8_dynamic_path)
+    print(f"✅ Exported INT8 dynamic model to ONNX: {onnx_int8_dynamic_path}")
+    export_model_int8_static_to_onnx(onnx_fp32_path, onnx_int8_static_path, val_loader)
+    print(f"✅ Exported INT8 static model to ONNX: {onnx_int8_static_path}")
+
+
 if __name__ == "__main__":
     # read a validation dataset
     import argparse
@@ -172,48 +214,42 @@ if __name__ == "__main__":
         default="model_fp8_static.onnx",
         help="Path to save the FP8 static ONNX model",
     )
+    parser.add_argument(
+        "--export-model-to-onnx",
+        action="store_true",
+        default=False,
+        help="Export the model to ONNX format",
+    )
+    # evaluate onnx models for all list
+    parser.add_argument(
+        "--evaluate-onnx-models",
+        action="store_true",
+        default=False,
+        help="Evaluate ONNX models",
+    )
+
     args = parser.parse_args()
 
-    train_loader, val_loader, info = make_dataloaders(
-        dataset_name=args.dataset,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        augment=args.augment,
-        data_dir=args.data_dir,
-        resize_size=(224, 224) if args.arch == "vit" else None,
-    )
+    if args.export_model_to_onnx:
+        export_model_to_onnx(
+            onnx_fp32_path=args.onnx_fp32_path,
+            artifacts_dir=args.artifacts_dir,
+            arch=args.arch,
+            dataset=args.dataset,
+        )
 
-    onnx_fp32_path = os.path.join(
-        args.artifacts_dir,
-        "part_2_results",
-        f"{args.arch}_fp32_{args.dataset}.onnx",
-    )
-    onnx_int8_dynamic_path = os.path.join(
-        args.artifacts_dir,
-        "part_2_results",
-        f"{args.arch}_int8_dynamic_{args.dataset}.onnx",
-    )
-    onnx_int8_static_path = os.path.join(
-        args.artifacts_dir,
-        "part_2_results",
-        f"{args.arch}_int8_static_{args.dataset}.onnx",
-    )
-
-    # export the model to ONNX format with dynamic quantization
-    # export_model_int8_dynamic_to_onnx(
-    #     onnx_fp32_path=args.onnx_fp32_path,
-    #     onnx_int8_dynamic_path=args.onnx_int8_dynamic_path,
-    # )
-
-    # export the model to ONNX format with static quantization
-    # export_model_int8_static_to_onnx(
-    #     onnx_fp32_path=args.onnx_fp32_path,
-    #     onnx_int8_static_path=args.onnx_int8_static_path,
-    #     val_loader=val_loader,
-    # )
-
-    evaluate_onnx_model(
-        onnx_path=onnx_fp32_path,
-        val_loader=val_loader,
-        artifacts_dir=args.artifacts_dir,
-    )
+    if args.evaluate_onnx_models:
+        train_loader, val_loader, info = make_dataloaders(
+            dataset_name=args.dataset,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            augment=args.augment,
+            data_dir=args.data_dir,
+            resize_size=(224, 224) if args.arch == "vit" else None,
+        )
+        for onnx_model in args.evaluate_onnx_models:
+            evaluate_onnx_model(
+                onnx_path=onnx_model,
+                val_loader=val_loader,
+                artifacts_dir=args.artifacts_dir,
+            )
