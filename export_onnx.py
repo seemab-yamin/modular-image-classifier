@@ -223,9 +223,10 @@ if __name__ == "__main__":
     # evaluate onnx models for all list
     parser.add_argument(
         "--evaluate-onnx-models",
-        action="store_true",
-        default=False,
-        help="Evaluate ONNX models",
+        nargs="+",  # Accepts one or more values
+        type=str,
+        default=None,
+        help="List of ONNX model paths to evaluate",
     )
 
     args = parser.parse_args()
